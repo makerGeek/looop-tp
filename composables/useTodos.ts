@@ -6,6 +6,7 @@ export interface Todo {
   completed: boolean
   createdAt: number
   priority: Priority
+  tags: string[]
 }
 
 const STORAGE_KEY = 'todo-app-todos'
@@ -20,8 +21,8 @@ function loadTodos(): Todo[] {
     const stored = localStorage.getItem(STORAGE_KEY)
     if (!stored) return []
     const parsed = JSON.parse(stored) as Todo[]
-    // Migrate older todos that lack a priority field
-    return parsed.map(t => ({ ...t, priority: t.priority ?? 'medium' }))
+    // Migrate older todos that lack priority or tags fields
+    return parsed.map(t => ({ ...t, priority: t.priority ?? 'medium', tags: t.tags ?? [] }))
   } catch {
     return []
   }
@@ -68,7 +69,7 @@ export const useTodos = () => {
   const completedCount = computed(() => todos.value.filter(t => t.completed).length)
   const pendingCount = computed(() => totalCount.value - completedCount.value)
 
-  function addTodo(text: string, priority: Priority = 'medium'): void {
+  function addTodo(text: string, priority: Priority = 'medium', tags: string[] = []): void {
     const trimmed = text.trim()
     if (!trimmed) return
 
@@ -77,7 +78,8 @@ export const useTodos = () => {
       text: trimmed,
       completed: false,
       createdAt: Date.now(),
-      priority
+      priority,
+      tags: [...new Set(tags.map(t => t.trim()).filter(Boolean))]
     }
 
     todos.value = [todo, ...todos.value]
@@ -113,21 +115,49 @@ export const useTodos = () => {
     saveTodos(todos.value)
   }
 
+  function addTagToTodo(id: string, tag: string): void {
+    const trimmed = tag.trim()
+    if (!trimmed) return
+
+    todos.value = todos.value.map(t =>
+      t.id === id && !t.tags.includes(trimmed)
+        ? { ...t, tags: [...t.tags, trimmed] }
+        : t
+    )
+    saveTodos(todos.value)
+  }
+
+  function removeTagFromTodo(id: string, tag: string): void {
+    todos.value = todos.value.map(t =>
+      t.id === id ? { ...t, tags: t.tags.filter(tg => tg !== tag) } : t
+    )
+    saveTodos(todos.value)
+  }
+
   function clearCompleted(): void {
     todos.value = todos.value.filter(t => !t.completed)
     saveTodos(todos.value)
   }
+
+  const allTags = computed(() => {
+    const tagSet = new Set<string>()
+    todos.value.forEach(t => t.tags.forEach(tag => tagSet.add(tag)))
+    return [...tagSet].sort()
+  })
 
   return {
     todos: sortedTodos,
     totalCount,
     completedCount,
     pendingCount,
+    allTags,
     addTodo,
     removeTodo,
     toggleTodo,
     editTodo,
     updatePriority,
+    addTagToTodo,
+    removeTagFromTodo,
     clearCompleted
   }
 }
