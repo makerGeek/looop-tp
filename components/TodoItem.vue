@@ -10,19 +10,38 @@
         />
         <span class="todo-checkbox-custom" />
       </label>
-      <span v-if="!isEditing" class="todo-text" @dblclick="startEdit">
-        {{ todo.text }}
-      </span>
-      <input
-        v-else
-        ref="editInput"
-        v-model="editText"
-        type="text"
-        class="todo-edit-input"
-        @keyup.enter="saveEdit"
-        @keyup.escape="cancelEdit"
-        @blur="saveEdit"
-      />
+      <div class="todo-text-group">
+        <span v-if="!isEditing" class="todo-text" @dblclick="startEdit">
+          {{ todo.text }}
+        </span>
+        <input
+          v-else
+          ref="editInput"
+          v-model="editText"
+          type="text"
+          class="todo-edit-input"
+          @keyup.enter="saveEdit"
+          @keyup.escape="cancelEdit"
+          @blur="saveEdit"
+        />
+        <span
+          v-if="todo.deadline && !todo.completed"
+          class="todo-deadline"
+          :class="deadlineClass"
+          :title="deadlineFullDate"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          {{ deadlineLabel }}
+        </span>
+        <span
+          v-else-if="todo.deadline && todo.completed"
+          class="todo-deadline deadline-completed"
+          :title="deadlineFullDate"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          {{ deadlineLabel }}
+        </span>
+      </div>
     </div>
     <div class="todo-actions">
       <select
@@ -36,6 +55,13 @@
         <option value="medium">Medium</option>
         <option value="low">Low</option>
       </select>
+      <input
+        type="date"
+        class="deadline-picker"
+        :value="deadlineDateValue"
+        title="Set deadline"
+        @change="handleDeadlineChange"
+      />
       <button
         v-if="!isEditing"
         class="btn-action btn-edit"
@@ -67,6 +93,7 @@ const emit = defineEmits<{
   remove: [id: string]
   edit: [id: string, text: string]
   updatePriority: [id: string, priority: Priority]
+  updateDeadline: [id: string, deadline: number | null]
 }>()
 
 const isEditing = ref(false)
@@ -97,6 +124,59 @@ function handlePriorityChange(event: Event) {
   const target = event.target as HTMLSelectElement
   emit('updatePriority', props.todo.id, target.value as Priority)
 }
+
+function handleDeadlineChange(event: Event) {
+  const target = event.target as HTMLInputElement
+  const deadline = target.value
+    ? new Date(target.value + 'T23:59:59').getTime()
+    : null
+  emit('updateDeadline', props.todo.id, deadline)
+}
+
+const deadlineDateValue = computed(() => {
+  if (!props.todo.deadline) return ''
+  const d = new Date(props.todo.deadline)
+  return d.toISOString().split('T')[0]
+})
+
+const deadlineFullDate = computed(() => {
+  if (!props.todo.deadline) return ''
+  return new Date(props.todo.deadline).toLocaleDateString(undefined, {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  })
+})
+
+const deadlineLabel = computed(() => {
+  if (!props.todo.deadline) return ''
+  const now = new Date()
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+  const deadlineDay = new Date(props.todo.deadline)
+  const deadlineDayStart = new Date(deadlineDay.getFullYear(), deadlineDay.getMonth(), deadlineDay.getDate()).getTime()
+  const diffDays = Math.round((deadlineDayStart - todayStart) / (1000 * 60 * 60 * 24))
+
+  if (diffDays < 0) return `${Math.abs(diffDays)}d overdue`
+  if (diffDays === 0) return 'Due today'
+  if (diffDays === 1) return 'Due tomorrow'
+  if (diffDays <= 7) return `Due in ${diffDays}d`
+  return deadlineDay.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+})
+
+const deadlineClass = computed(() => {
+  if (!props.todo.deadline) return ''
+  const now = new Date()
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+  const deadlineDay = new Date(props.todo.deadline)
+  const deadlineDayStart = new Date(deadlineDay.getFullYear(), deadlineDay.getMonth(), deadlineDay.getDate()).getTime()
+  const diffDays = Math.round((deadlineDayStart - todayStart) / (1000 * 60 * 60 * 24))
+
+  if (diffDays < 0) return 'deadline-overdue'
+  if (diffDays === 0) return 'deadline-today'
+  if (diffDays <= 2) return 'deadline-soon'
+  return 'deadline-normal'
+})
 </script>
 
 <style scoped>
@@ -207,11 +287,61 @@ function handlePriorityChange(event: Event) {
   transition-duration: 0.1s;
 }
 
+.todo-text-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 0;
+}
+
 .todo-text {
   word-break: break-word;
   cursor: default;
   font-size: 0.9375rem;
   line-height: 1.5;
+}
+
+.todo-deadline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+  line-height: 1;
+  padding: 0.15rem 0.4rem;
+  border-radius: 9999px;
+  width: fit-content;
+  transition: all var(--transition-fast);
+}
+
+.deadline-normal {
+  color: var(--color-text-secondary);
+  background: rgba(45, 27, 78, 0.06);
+}
+
+.deadline-soon {
+  color: var(--color-priority-medium);
+  background: var(--color-priority-medium-bg);
+}
+
+.deadline-today {
+  color: var(--color-priority-high);
+  background: var(--color-priority-high-bg);
+  font-weight: 600;
+}
+
+.deadline-overdue {
+  color: var(--color-danger);
+  background: var(--color-danger-glass);
+  font-weight: 700;
+}
+
+.deadline-completed {
+  color: var(--color-text-secondary);
+  background: rgba(45, 27, 78, 0.04);
+  text-decoration: line-through;
+  opacity: 0.6;
 }
 
 .todo-edit-input {
@@ -237,6 +367,44 @@ function handlePriorityChange(event: Event) {
   gap: 0.25rem;
   margin-left: 0.75rem;
   flex-shrink: 0;
+}
+
+.deadline-picker {
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 1px solid var(--color-glass-border);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  color: var(--color-text-secondary);
+  font-size: 0;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.deadline-picker:hover {
+  border-color: var(--color-glass-border-strong);
+  background: rgba(255, 255, 255, 0.5);
+  transform: scale(1.1);
+}
+
+.deadline-picker:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+.deadline-picker::-webkit-calendar-picker-indicator {
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  opacity: 0.5;
+  transition: opacity var(--transition-fast);
+}
+
+.deadline-picker:hover::-webkit-calendar-picker-indicator {
+  opacity: 0.8;
 }
 
 .priority-badge {
