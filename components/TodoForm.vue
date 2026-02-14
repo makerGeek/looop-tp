@@ -186,7 +186,7 @@ function handleSubmit() {
   border: 1px solid var(--color-glass-border);
   border-radius: var(--radius);
   font-size: 0.8125rem;
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--color-input-bg);
   color: var(--color-text);
   transition: all var(--transition-base);
   backdrop-filter: blur(var(--blur-sm));
@@ -195,14 +195,14 @@ function handleSubmit() {
 
 .tag-input:hover {
   border-color: var(--color-glass-border-strong);
-  background: rgba(255, 255, 255, 0.6);
+  background: var(--color-input-bg-hover);
 }
 
 .tag-input:focus {
   outline: none;
   border-color: var(--color-primary);
   box-shadow: var(--shadow-glow);
-  background: rgba(255, 255, 255, 0.7);
+  background: var(--color-input-bg-focus);
 }
 
 .tag-input::placeholder {
