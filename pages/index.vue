@@ -9,6 +9,8 @@
       @remove="removeTodo"
       @edit="editTodo"
       @update-priority="updatePriority"
+      @add-tag="addTagToTodo"
+      @remove-tag="removeTagFromTodo"
       @clear-completed="clearCompleted"
     />
   </div>
@@ -24,6 +26,8 @@ const {
   toggleTodo,
   editTodo,
   updatePriority,
+  addTagToTodo,
+  removeTagFromTodo,
   clearCompleted
 } = useTodos()
 </script>
