@@ -30,6 +30,7 @@
         @toggle="$emit('toggle', $event)"
         @remove="$emit('remove', $event)"
         @edit="(id, text) => $emit('edit', id, text)"
+        @update-priority="(id, priority) => $emit('updatePriority', id, priority)"
       />
     </TransitionGroup>
 
@@ -41,7 +42,7 @@
 </template>
 
 <script setup lang="ts">
-import type { Todo } from '~/composables/useTodos'
+import type { Todo, Priority } from '~/composables/useTodos'
 
 defineProps<{
   todos: Todo[]
@@ -53,6 +54,7 @@ defineEmits<{
   toggle: [id: string]
   remove: [id: string]
   edit: [id: string, text: string]
+  updatePriority: [id: string, priority: Priority]
   clearCompleted: []
 }>()
 </script>
