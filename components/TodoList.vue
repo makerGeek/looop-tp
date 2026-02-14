@@ -79,6 +79,15 @@ defineEmits<{
   box-shadow: var(--shadow-glass), var(--shadow-glass-inset);
   font-size: 0.8125rem;
   color: var(--color-text-secondary);
+  transition: box-shadow var(--transition-base),
+              background var(--transition-base),
+              border-color var(--transition-base);
+}
+
+.todo-stats:hover {
+  background: var(--color-glass-hover);
+  box-shadow: var(--shadow-glass-hover), var(--shadow-glass-inset);
+  border-color: var(--color-glass-border-strong);
 }
 
 .todo-stats-info {
@@ -114,7 +123,8 @@ defineEmits<{
   color: var(--color-text-secondary);
   font-size: 0.75rem;
   font-weight: 500;
-  transition: all var(--transition-base);
+  transition: all var(--transition-base),
+              transform var(--transition-spring);
   backdrop-filter: blur(var(--blur-sm));
   -webkit-backdrop-filter: blur(var(--blur-sm));
 }
@@ -123,6 +133,13 @@ defineEmits<{
   border-color: rgba(224, 64, 96, 0.3);
   color: var(--color-danger);
   background: var(--color-danger-glass);
+  transform: translateY(-1px) scale(1.03);
+  box-shadow: 0 4px 12px rgba(224, 64, 96, 0.12);
+}
+
+.btn-clear:active {
+  transform: translateY(0) scale(0.97);
+  transition-duration: 0.1s;
 }
 
 .todo-list {
@@ -152,6 +169,16 @@ defineEmits<{
   border: 1px solid var(--color-glass-border);
   box-shadow: var(--shadow-glass), var(--shadow-glass-inset);
   margin-bottom: 1rem;
+  animation: orb-float 3s ease-in-out infinite, glass-breathe 4s ease-in-out infinite;
+  transition: transform var(--transition-spring),
+              box-shadow var(--transition-base);
+}
+
+.empty-glass-orb:hover {
+  transform: scale(1.1);
+  box-shadow: var(--shadow-glass-hover), var(--shadow-glass-inset),
+              0 0 20px var(--color-primary-glow);
+  animation-play-state: paused;
 }
 
 .empty-icon {
