@@ -57,6 +57,20 @@
   border-radius: var(--radius-sm);
   font-size: 1rem;
   box-shadow: 0 2px 8px var(--color-primary-glow);
+  transition: transform var(--transition-spring),
+              box-shadow var(--transition-base),
+              filter var(--transition-base);
+}
+
+.app-title:hover .app-title-icon {
+  transform: scale(1.12) rotate(-4deg);
+  box-shadow: 0 4px 16px var(--color-primary-glow);
+  filter: brightness(1.12);
+}
+
+.app-title:active .app-title-icon {
+  transform: scale(0.95) rotate(0deg);
+  transition-duration: 0.1s;
 }
 
 .app-main {
