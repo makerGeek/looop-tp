@@ -9,6 +9,7 @@
       @remove="removeTodo"
       @edit="editTodo"
       @update-priority="updatePriority"
+      @update-deadline="updateDeadline"
       @clear-completed="clearCompleted"
     />
   </div>
@@ -24,6 +25,7 @@ const {
   toggleTodo,
   editTodo,
   updatePriority,
+  updateDeadline,
   clearCompleted
 } = useTodos()
 </script>
