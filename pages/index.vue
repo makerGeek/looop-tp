@@ -8,6 +8,7 @@
       @toggle="toggleTodo"
       @remove="removeTodo"
       @edit="editTodo"
+      @update-priority="updatePriority"
       @clear-completed="clearCompleted"
     />
   </div>
@@ -22,6 +23,7 @@ const {
   removeTodo,
   toggleTodo,
   editTodo,
+  updatePriority,
   clearCompleted
 } = useTodos()
 </script>
