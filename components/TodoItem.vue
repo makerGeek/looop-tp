@@ -264,7 +264,7 @@ const deadlineClass = computed(() => {
 .todo-item:hover {
   background: var(--color-glass-hover);
   box-shadow: var(--shadow-glass-hover), var(--shadow-glass-inset),
-              0 0 0 1px rgba(255, 255, 255, 0.3);
+              var(--color-highlight);
   transform: translateY(-2px) scale(var(--glass-hover-scale));
   border-color: var(--color-glass-border-strong);
   filter: brightness(var(--glass-hover-brightness));
@@ -315,7 +315,7 @@ const deadlineClass = computed(() => {
   height: 1.375rem;
   border-radius: 50%;
   border: 2px solid var(--color-glass-border-strong);
-  background: rgba(255, 255, 255, 0.4);
+  background: var(--color-surface-btn);
   transition: all var(--transition-base);
   position: relative;
 }
@@ -376,7 +376,7 @@ const deadlineClass = computed(() => {
   gap: 0.2rem;
   padding: 0.1rem 0.4rem;
   background: var(--color-primary-glow);
-  border: 1px solid rgba(124, 92, 191, 0.2);
+  border: 1px solid var(--color-primary-tint-border);
   border-radius: 9999px;
   font-size: 0.65rem;
   font-weight: 600;
@@ -385,7 +385,7 @@ const deadlineClass = computed(() => {
 }
 
 .todo-tag:hover {
-  background: rgba(124, 92, 191, 0.15);
+  background: var(--color-primary-tint-hover);
   transform: scale(1.05);
 }
 
@@ -408,7 +408,7 @@ const deadlineClass = computed(() => {
 }
 
 .todo-tag-remove:hover {
-  background: rgba(124, 92, 191, 0.2);
+  background: var(--color-primary-tint-strong);
   color: var(--color-primary-hover);
 }
 
@@ -427,7 +427,7 @@ const deadlineClass = computed(() => {
 
 .deadline-normal {
   color: var(--color-text-secondary);
-  background: rgba(45, 27, 78, 0.06);
+  background: var(--color-surface-muted);
 }
 
 .deadline-soon {
@@ -449,7 +449,7 @@ const deadlineClass = computed(() => {
 
 .deadline-completed {
   color: var(--color-text-secondary);
-  background: rgba(45, 27, 78, 0.04);
+  background: var(--color-surface-muted-subtle);
   text-decoration: line-through;
   opacity: 0.6;
 }
@@ -460,7 +460,7 @@ const deadlineClass = computed(() => {
   border: 1px solid var(--color-primary);
   border-radius: var(--radius-sm);
   font-size: inherit;
-  background: rgba(255, 255, 255, 0.6);
+  background: var(--color-input-bg-hover);
   color: var(--color-text);
   box-shadow: var(--shadow-glow);
   transition: all var(--transition-base);
@@ -468,7 +468,7 @@ const deadlineClass = computed(() => {
 
 .todo-edit-input:focus {
   outline: none;
-  background: rgba(255, 255, 255, 0.8);
+  background: var(--color-input-bg-focus);
 }
 
 .todo-actions {
@@ -485,7 +485,7 @@ const deadlineClass = computed(() => {
   padding: 0;
   border: 1px solid var(--color-glass-border);
   border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.3);
+  background: var(--color-glass);
   cursor: pointer;
   transition: all var(--transition-fast);
   color: var(--color-text-secondary);
@@ -496,7 +496,7 @@ const deadlineClass = computed(() => {
 
 .deadline-picker:hover {
   border-color: var(--color-glass-border-strong);
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--color-surface-btn-hover);
   transform: scale(1.1);
 }
 
@@ -546,19 +546,19 @@ const deadlineClass = computed(() => {
 .priority-high {
   color: var(--color-priority-high);
   background-color: var(--color-priority-high-bg);
-  border-color: rgba(224, 64, 96, 0.25);
+  border-color: var(--color-danger-tint-border);
 }
 
 .priority-medium {
   color: var(--color-priority-medium);
   background-color: var(--color-priority-medium-bg);
-  border-color: rgba(232, 160, 32, 0.25);
+  border-color: var(--color-priority-medium-border);
 }
 
 .priority-low {
   color: var(--color-priority-low);
   background-color: var(--color-priority-low-bg);
-  border-color: rgba(45, 27, 78, 0.1);
+  border-color: var(--color-priority-low-border);
 }
 
 .btn-action {
@@ -576,7 +576,7 @@ const deadlineClass = computed(() => {
 }
 
 .btn-action:hover {
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--color-surface-btn-hover);
   color: var(--color-text);
   transform: scale(1.15);
 }
@@ -589,7 +589,7 @@ const deadlineClass = computed(() => {
 .btn-delete:hover {
   background: var(--color-danger-glass);
   color: var(--color-danger);
-  box-shadow: 0 0 12px rgba(224, 64, 96, 0.2);
+  box-shadow: 0 0 12px var(--color-danger-tint-glow);
 }
 
 .btn-tag:hover {
@@ -608,7 +608,7 @@ const deadlineClass = computed(() => {
   border: 1px solid var(--color-primary);
   border-radius: var(--radius-sm);
   font-size: 0.75rem;
-  background: rgba(255, 255, 255, 0.6);
+  background: var(--color-input-bg-hover);
   color: var(--color-text);
   box-shadow: var(--shadow-glow);
   transition: all var(--transition-base);
@@ -616,7 +616,7 @@ const deadlineClass = computed(() => {
 
 .inline-tag-input:focus {
   outline: none;
-  background: rgba(255, 255, 255, 0.8);
+  background: var(--color-input-bg-focus);
 }
 
 .btn-edit:hover {

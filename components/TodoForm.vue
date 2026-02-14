@@ -125,15 +125,15 @@ function handleSubmit() {
 
 .todo-form:hover {
   box-shadow: var(--shadow-glass-hover), var(--shadow-glass-inset),
-              0 0 0 1px rgba(255, 255, 255, 0.2);
+              var(--color-highlight);
   border-color: var(--color-glass-border-strong);
   background: var(--color-glass-hover);
 }
 
 .todo-form:focus-within {
   box-shadow: var(--shadow-glass-hover), var(--shadow-glass-inset),
-              0 0 24px rgba(124, 92, 191, 0.1);
-  border-color: rgba(124, 92, 191, 0.2);
+              0 0 24px var(--color-primary-tint-focus);
+  border-color: var(--color-primary-tint-border);
 }
 
 .todo-form-row {
@@ -147,7 +147,7 @@ function handleSubmit() {
   border-radius: var(--radius);
   font-size: 1rem;
   transition: all var(--transition-base);
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--color-input-bg);
   color: var(--color-text);
   backdrop-filter: blur(var(--blur-sm));
   -webkit-backdrop-filter: blur(var(--blur-sm));
@@ -155,14 +155,14 @@ function handleSubmit() {
 
 .todo-input:hover {
   border-color: var(--color-glass-border-strong);
-  background: rgba(255, 255, 255, 0.6);
+  background: var(--color-input-bg-hover);
 }
 
 .todo-input:focus {
   outline: none;
   border-color: var(--color-primary);
   box-shadow: var(--shadow-glow);
-  background: rgba(255, 255, 255, 0.7);
+  background: var(--color-input-bg-focus);
 }
 
 .todo-input::placeholder {
@@ -215,7 +215,7 @@ function handleSubmit() {
   justify-content: center;
   width: 2rem;
   height: 2rem;
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--color-input-bg);
   border: 1px solid var(--color-glass-border);
   border-radius: var(--radius-sm);
   color: var(--color-primary);
@@ -243,7 +243,7 @@ function handleSubmit() {
   gap: 0.25rem;
   padding: 0.2rem 0.5rem;
   background: var(--color-primary-glow);
-  border: 1px solid rgba(124, 92, 191, 0.2);
+  border: 1px solid var(--color-primary-tint-border);
   border-radius: 9999px;
   font-size: 0.7rem;
   font-weight: 600;
@@ -254,7 +254,7 @@ function handleSubmit() {
 }
 
 .tag-badge:hover {
-  background: rgba(124, 92, 191, 0.15);
+  background: var(--color-primary-tint-hover);
   transform: scale(1.05);
 }
 
@@ -277,7 +277,7 @@ function handleSubmit() {
 }
 
 .tag-remove-btn:hover {
-  background: rgba(124, 92, 191, 0.2);
+  background: var(--color-primary-tint-strong);
   color: var(--color-primary-hover);
 }
 
@@ -291,7 +291,7 @@ function handleSubmit() {
   border: 1px solid var(--color-glass-border);
   border-radius: var(--radius);
   font-size: 0.875rem;
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--color-input-bg);
   color: var(--color-text);
   cursor: pointer;
   transition: all var(--transition-base);
@@ -301,7 +301,7 @@ function handleSubmit() {
 
 .todo-priority-select:hover {
   border-color: var(--color-glass-border-strong);
-  background: rgba(255, 255, 255, 0.6);
+  background: var(--color-input-bg-hover);
   transform: translateY(-1px);
 }
 
@@ -316,7 +316,7 @@ function handleSubmit() {
   border: 1px solid var(--color-glass-border);
   border-radius: var(--radius);
   font-size: 0.875rem;
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--color-input-bg);
   color: var(--color-text);
   cursor: pointer;
   transition: all var(--transition-base);
@@ -326,7 +326,7 @@ function handleSubmit() {
 
 .todo-deadline-input:hover {
   border-color: var(--color-glass-border-strong);
-  background: rgba(255, 255, 255, 0.6);
+  background: var(--color-input-bg-hover);
   transform: translateY(-1px);
 }
 
@@ -360,7 +360,7 @@ function handleSubmit() {
 .todo-add-btn:hover:not(:disabled) {
   background: linear-gradient(135deg, var(--color-primary-hover), #8a68c8);
   box-shadow: 0 6px 24px var(--color-primary-glow),
-              0 0 0 1px rgba(255, 255, 255, 0.2) inset;
+              var(--color-highlight-inset);
   transform: translateY(-2px) scale(1.02);
   filter: brightness(1.08);
 }
