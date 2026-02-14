@@ -55,6 +55,22 @@ function handleSubmit() {
   border: 1px solid var(--color-glass-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-glass), var(--shadow-glass-inset);
+  transition: box-shadow var(--transition-base),
+              border-color var(--transition-base),
+              background var(--transition-base);
+}
+
+.todo-form:hover {
+  box-shadow: var(--shadow-glass-hover), var(--shadow-glass-inset),
+              0 0 0 1px rgba(255, 255, 255, 0.2);
+  border-color: var(--color-glass-border-strong);
+  background: var(--color-glass-hover);
+}
+
+.todo-form:focus-within {
+  box-shadow: var(--shadow-glass-hover), var(--shadow-glass-inset),
+              0 0 24px rgba(124, 92, 191, 0.1);
+  border-color: rgba(124, 92, 191, 0.2);
 }
 
 .todo-form-row {
@@ -72,6 +88,11 @@ function handleSubmit() {
   color: var(--color-text);
   backdrop-filter: blur(var(--blur-sm));
   -webkit-backdrop-filter: blur(var(--blur-sm));
+}
+
+.todo-input:hover {
+  border-color: var(--color-glass-border-strong);
+  background: rgba(255, 255, 255, 0.6);
 }
 
 .todo-input:focus {
@@ -103,6 +124,12 @@ function handleSubmit() {
   -webkit-backdrop-filter: blur(var(--blur-sm));
 }
 
+.todo-priority-select:hover {
+  border-color: var(--color-glass-border-strong);
+  background: rgba(255, 255, 255, 0.6);
+  transform: translateY(-1px);
+}
+
 .todo-priority-select:focus {
   outline: none;
   border-color: var(--color-primary);
@@ -122,20 +149,27 @@ function handleSubmit() {
   border-radius: var(--radius);
   font-weight: 600;
   font-size: 0.9375rem;
-  transition: all var(--transition-base);
+  transition: transform var(--transition-spring),
+              box-shadow var(--transition-base),
+              background var(--transition-base),
+              filter var(--transition-base);
   box-shadow: 0 2px 12px var(--color-primary-glow);
   letter-spacing: 0.01em;
 }
 
 .todo-add-btn:hover:not(:disabled) {
   background: linear-gradient(135deg, var(--color-primary-hover), #8a68c8);
-  box-shadow: 0 4px 20px var(--color-primary-glow);
-  transform: translateY(-1px);
+  box-shadow: 0 6px 24px var(--color-primary-glow),
+              0 0 0 1px rgba(255, 255, 255, 0.2) inset;
+  transform: translateY(-2px) scale(1.02);
+  filter: brightness(1.08);
 }
 
 .todo-add-btn:active:not(:disabled) {
-  transform: translateY(0);
+  transform: translateY(0) scale(0.97);
   box-shadow: 0 2px 8px var(--color-primary-glow);
+  filter: brightness(0.95);
+  transition-duration: 0.1s;
 }
 
 .todo-add-btn:disabled {
