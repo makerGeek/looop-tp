@@ -15,6 +15,13 @@
         <option value="medium">Medium</option>
         <option value="high">High</option>
       </select>
+      <input
+        v-model="selectedDeadline"
+        type="date"
+        class="todo-deadline-input"
+        :min="todayDate"
+        title="Set deadline"
+      />
       <button type="submit" class="todo-add-btn" :disabled="!newTodoText.trim()">
         <span class="btn-icon">+</span>
         Add Task
@@ -27,18 +34,28 @@
 import type { Priority } from '~/composables/useTodos'
 
 const emit = defineEmits<{
-  add: [text: string, priority: Priority]
+  add: [text: string, priority: Priority, deadline: number | null]
 }>()
 
 const newTodoText = ref('')
 const selectedPriority = ref<Priority>('medium')
+const selectedDeadline = ref('')
+
+const todayDate = computed(() => {
+  const now = new Date()
+  return now.toISOString().split('T')[0]
+})
 
 function handleSubmit() {
   const text = newTodoText.value.trim()
   if (!text) return
-  emit('add', text, selectedPriority.value)
+  const deadline = selectedDeadline.value
+    ? new Date(selectedDeadline.value + 'T23:59:59').getTime()
+    : null
+  emit('add', text, selectedPriority.value, deadline)
   newTodoText.value = ''
   selectedPriority.value = 'medium'
+  selectedDeadline.value = ''
 }
 </script>
 
@@ -131,6 +148,31 @@ function handleSubmit() {
 }
 
 .todo-priority-select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-glow);
+}
+
+.todo-deadline-input {
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--color-glass-border);
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  backdrop-filter: blur(var(--blur-sm));
+  -webkit-backdrop-filter: blur(var(--blur-sm));
+}
+
+.todo-deadline-input:hover {
+  border-color: var(--color-glass-border-strong);
+  background: rgba(255, 255, 255, 0.6);
+  transform: translateY(-1px);
+}
+
+.todo-deadline-input:focus {
   outline: none;
   border-color: var(--color-primary);
   box-shadow: var(--shadow-glow);
