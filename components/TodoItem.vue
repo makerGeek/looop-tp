@@ -10,19 +10,36 @@
         />
         <span class="todo-checkbox-custom" />
       </label>
-      <span v-if="!isEditing" class="todo-text" @dblclick="startEdit">
-        {{ todo.text }}
-      </span>
-      <input
-        v-else
-        ref="editInput"
-        v-model="editText"
-        type="text"
-        class="todo-edit-input"
-        @keyup.enter="saveEdit"
-        @keyup.escape="cancelEdit"
-        @blur="saveEdit"
-      />
+      <div class="todo-text-wrapper">
+        <span v-if="!isEditing" class="todo-text" @dblclick="startEdit">
+          {{ todo.text }}
+        </span>
+        <input
+          v-else
+          ref="editInput"
+          v-model="editText"
+          type="text"
+          class="todo-edit-input"
+          @keyup.enter="saveEdit"
+          @keyup.escape="cancelEdit"
+          @blur="saveEdit"
+        />
+        <div v-if="todo.tags.length > 0" class="todo-tags">
+          <span
+            v-for="tag in todo.tags"
+            :key="tag"
+            class="todo-tag"
+          >
+            {{ tag }}
+            <button
+              type="button"
+              class="todo-tag-remove"
+              title="Remove tag"
+              @click="$emit('removeTag', todo.id, tag)"
+            >×</button>
+          </span>
+        </div>
+      </div>
     </div>
     <div class="todo-actions">
       <select
@@ -36,6 +53,26 @@
         <option value="medium">Medium</option>
         <option value="low">Low</option>
       </select>
+      <div v-if="isAddingTag" class="inline-tag-input-wrapper">
+        <input
+          ref="tagInput"
+          v-model="newTag"
+          type="text"
+          class="inline-tag-input"
+          placeholder="Tag..."
+          @keyup.enter="saveTag"
+          @keyup.escape="cancelAddTag"
+          @blur="saveTag"
+        />
+      </div>
+      <button
+        v-if="!isEditing && !isAddingTag"
+        class="btn-action btn-tag"
+        title="Add tag"
+        @click="startAddTag"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+      </button>
       <button
         v-if="!isEditing"
         class="btn-action btn-edit"
@@ -67,11 +104,16 @@ const emit = defineEmits<{
   remove: [id: string]
   edit: [id: string, text: string]
   updatePriority: [id: string, priority: Priority]
+  addTag: [id: string, tag: string]
+  removeTag: [id: string, tag: string]
 }>()
 
 const isEditing = ref(false)
 const editText = ref('')
 const editInput = ref<HTMLInputElement | null>(null)
+const isAddingTag = ref(false)
+const newTag = ref('')
+const tagInput = ref<HTMLInputElement | null>(null)
 
 function startEdit() {
   isEditing.value = true
@@ -91,6 +133,28 @@ function saveEdit() {
 
 function cancelEdit() {
   isEditing.value = false
+}
+
+function startAddTag() {
+  isAddingTag.value = true
+  newTag.value = ''
+  nextTick(() => {
+    tagInput.value?.focus()
+  })
+}
+
+function saveTag() {
+  const trimmed = newTag.value.trim()
+  if (trimmed) {
+    emit('addTag', props.todo.id, trimmed)
+  }
+  isAddingTag.value = false
+  newTag.value = ''
+}
+
+function cancelAddTag() {
+  isAddingTag.value = false
+  newTag.value = ''
 }
 
 function handlePriorityChange(event: Event) {
@@ -207,11 +271,67 @@ function handlePriorityChange(event: Event) {
   transition-duration: 0.1s;
 }
 
+.todo-text-wrapper {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
 .todo-text {
   word-break: break-word;
   cursor: default;
   font-size: 0.9375rem;
   line-height: 1.5;
+}
+
+.todo-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.todo-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.1rem 0.4rem;
+  background: var(--color-primary-glow);
+  border: 1px solid rgba(124, 92, 191, 0.2);
+  border-radius: 9999px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  transition: all var(--transition-fast);
+}
+
+.todo-tag:hover {
+  background: rgba(124, 92, 191, 0.15);
+  transform: scale(1.05);
+}
+
+.todo-tag-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.75rem;
+  height: 0.75rem;
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.todo-tag-remove:hover {
+  background: rgba(124, 92, 191, 0.2);
+  color: var(--color-primary-hover);
 }
 
 .todo-edit-input {
@@ -312,6 +432,33 @@ function handlePriorityChange(event: Event) {
   background: var(--color-danger-glass);
   color: var(--color-danger);
   box-shadow: 0 0 12px rgba(224, 64, 96, 0.2);
+}
+
+.btn-tag:hover {
+  background: var(--color-primary-glow);
+  color: var(--color-primary);
+  box-shadow: 0 0 12px var(--color-primary-glow);
+}
+
+.inline-tag-input-wrapper {
+  display: flex;
+}
+
+.inline-tag-input {
+  width: 5rem;
+  padding: 0.2rem 0.5rem;
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--color-text);
+  box-shadow: var(--shadow-glow);
+  transition: all var(--transition-base);
+}
+
+.inline-tag-input:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.8);
 }
 
 .btn-edit:hover {
