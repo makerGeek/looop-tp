@@ -11,6 +11,7 @@
       @update-priority="updatePriority"
       @add-tag="addTagToTodo"
       @remove-tag="removeTagFromTodo"
+      @update-deadline="updateDeadline"
       @clear-completed="clearCompleted"
     />
   </div>
@@ -28,6 +29,7 @@ const {
   updatePriority,
   addTagToTodo,
   removeTagFromTodo,
+  updateDeadline,
   clearCompleted
 } = useTodos()
 </script>

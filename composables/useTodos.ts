@@ -7,6 +7,7 @@ export interface Todo {
   createdAt: number
   priority: Priority
   tags: string[]
+  deadline: number | null
 }
 
 const STORAGE_KEY = 'todo-app-todos'
@@ -21,8 +22,8 @@ function loadTodos(): Todo[] {
     const stored = localStorage.getItem(STORAGE_KEY)
     if (!stored) return []
     const parsed = JSON.parse(stored) as Todo[]
-    // Migrate older todos that lack priority or tags fields
-    return parsed.map(t => ({ ...t, priority: t.priority ?? 'medium', tags: t.tags ?? [] }))
+    // Migrate older todos that lack priority, tags, or deadline fields
+    return parsed.map(t => ({ ...t, priority: t.priority ?? 'medium', tags: t.tags ?? [], deadline: t.deadline ?? null }))
   } catch {
     return []
   }
@@ -60,6 +61,12 @@ export const useTodos = () => {
       if (a.priority !== b.priority) {
         return priorityOrder[a.priority] - priorityOrder[b.priority]
       }
+      // Then by deadline (earliest first, no-deadline last)
+      if (a.deadline !== b.deadline) {
+        if (a.deadline === null) return 1
+        if (b.deadline === null) return -1
+        return a.deadline - b.deadline
+      }
       // Then by creation date (newest first)
       return b.createdAt - a.createdAt
     })
@@ -69,7 +76,7 @@ export const useTodos = () => {
   const completedCount = computed(() => todos.value.filter(t => t.completed).length)
   const pendingCount = computed(() => totalCount.value - completedCount.value)
 
-  function addTodo(text: string, priority: Priority = 'medium', tags: string[] = []): void {
+  function addTodo(text: string, priority: Priority = 'medium', tags: string[] = [], deadline: number | null = null): void {
     const trimmed = text.trim()
     if (!trimmed) return
 
@@ -79,7 +86,8 @@ export const useTodos = () => {
       completed: false,
       createdAt: Date.now(),
       priority,
-      tags: [...new Set(tags.map(t => t.trim()).filter(Boolean))]
+      tags: [...new Set(tags.map(t => t.trim()).filter(Boolean))],
+      deadline
     }
 
     todos.value = [todo, ...todos.value]
@@ -134,6 +142,13 @@ export const useTodos = () => {
     saveTodos(todos.value)
   }
 
+  function updateDeadline(id: string, deadline: number | null): void {
+    todos.value = todos.value.map(t =>
+      t.id === id ? { ...t, deadline } : t
+    )
+    saveTodos(todos.value)
+  }
+
   function clearCompleted(): void {
     todos.value = todos.value.filter(t => !t.completed)
     saveTodos(todos.value)
@@ -158,6 +173,7 @@ export const useTodos = () => {
     updatePriority,
     addTagToTodo,
     removeTagFromTodo,
+    updateDeadline,
     clearCompleted
   }
 }

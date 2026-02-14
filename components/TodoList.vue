@@ -35,6 +35,7 @@
         @update-priority="(id, priority) => $emit('updatePriority', id, priority)"
         @add-tag="(id, tag) => $emit('addTag', id, tag)"
         @remove-tag="(id, tag) => $emit('removeTag', id, tag)"
+        @update-deadline="(id, deadline) => $emit('updateDeadline', id, deadline)"
       />
     </TransitionGroup>
 
@@ -64,6 +65,7 @@ defineEmits<{
   updatePriority: [id: string, priority: Priority]
   addTag: [id: string, tag: string]
   removeTag: [id: string, tag: string]
+  updateDeadline: [id: string, deadline: number | null]
   clearCompleted: []
 }>()
 </script>
