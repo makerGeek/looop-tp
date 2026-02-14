@@ -67,6 +67,51 @@
   --glass-hover-scale: 1.015;
   --glass-active-scale: 0.98;
   --glass-hover-brightness: 1.08;
+
+  /* Color mode transition */
+  color-scheme: light;
+}
+
+/* Dark mode overrides */
+html.dark {
+  --color-bg-start: #1a1025;
+  --color-bg-mid: #151a2e;
+  --color-bg-end: #0f1a24;
+
+  --color-glass: rgba(255, 255, 255, 0.08);
+  --color-glass-hover: rgba(255, 255, 255, 0.12);
+  --color-glass-strong: rgba(255, 255, 255, 0.15);
+  --color-glass-border: rgba(255, 255, 255, 0.12);
+  --color-glass-border-strong: rgba(255, 255, 255, 0.2);
+
+  --color-primary: #a78bfa;
+  --color-primary-hover: #b9a0fb;
+  --color-primary-glass: rgba(167, 139, 250, 0.8);
+  --color-primary-glow: rgba(167, 139, 250, 0.2);
+
+  --color-text: #e8e0f0;
+  --color-text-secondary: rgba(232, 224, 240, 0.55);
+  --color-text-on-primary: #ffffff;
+
+  --color-danger: #f06080;
+  --color-danger-hover: #e04060;
+  --color-danger-glass: rgba(240, 96, 128, 0.15);
+
+  --color-success: #3dd497;
+  --color-success-glass: rgba(61, 212, 151, 0.15);
+
+  --color-priority-high: #f06080;
+  --color-priority-high-bg: rgba(240, 96, 128, 0.15);
+  --color-priority-medium: #f0b840;
+  --color-priority-medium-bg: rgba(240, 184, 64, 0.15);
+  --color-priority-low: rgba(232, 224, 240, 0.4);
+  --color-priority-low-bg: rgba(232, 224, 240, 0.08);
+
+  --shadow-glass: 0 4px 24px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.15);
+  --shadow-glass-hover: 0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2);
+  --shadow-glass-inset: inset 0 1px 1px rgba(255, 255, 255, 0.08);
+
+  color-scheme: dark;
 }
 
 body {
@@ -79,6 +124,7 @@ body {
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background var(--transition-slow), color var(--transition-slow);
 }
 
 button {
