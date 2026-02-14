@@ -111,13 +111,27 @@ function handlePriorityChange(event: Event) {
   border: 1px solid var(--color-glass-border);
   border-radius: var(--radius);
   box-shadow: var(--shadow-glass), var(--shadow-glass-inset);
-  transition: all var(--transition-base);
+  transition: transform var(--transition-spring),
+              box-shadow var(--transition-base),
+              background var(--transition-base),
+              border-color var(--transition-base),
+              filter var(--transition-base);
+  will-change: transform, box-shadow, filter;
 }
 
 .todo-item:hover {
   background: var(--color-glass-hover);
-  box-shadow: var(--shadow-glass-hover), var(--shadow-glass-inset);
-  transform: translateY(-1px);
+  box-shadow: var(--shadow-glass-hover), var(--shadow-glass-inset),
+              0 0 0 1px rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px) scale(var(--glass-hover-scale));
+  border-color: var(--color-glass-border-strong);
+  filter: brightness(var(--glass-hover-brightness));
+}
+
+.todo-item:active {
+  transform: translateY(0) scale(var(--glass-active-scale));
+  box-shadow: var(--shadow-glass), var(--shadow-glass-inset);
+  transition-duration: 0.1s;
 }
 
 .todo-item.completed {
@@ -184,7 +198,13 @@ function handlePriorityChange(event: Event) {
 
 .todo-checkbox-wrapper:hover .todo-checkbox-custom {
   border-color: var(--color-primary);
-  box-shadow: 0 0 12px var(--color-primary-glow);
+  box-shadow: 0 0 16px var(--color-primary-glow);
+  transform: scale(1.15);
+}
+
+.todo-checkbox-wrapper:active .todo-checkbox-custom {
+  transform: scale(0.9);
+  transition-duration: 0.1s;
 }
 
 .todo-text {
@@ -235,6 +255,11 @@ function handlePriorityChange(event: Event) {
   -webkit-backdrop-filter: blur(var(--blur-sm));
 }
 
+.priority-badge:hover {
+  transform: scale(1.05);
+  filter: brightness(1.1);
+}
+
 .priority-badge:focus {
   outline: 2px solid var(--color-primary);
   outline-offset: 1px;
@@ -266,7 +291,8 @@ function handlePriorityChange(event: Event) {
   border: none;
   padding: 0.375rem;
   border-radius: var(--radius-sm);
-  transition: all var(--transition-fast);
+  transition: all var(--transition-fast),
+              transform var(--transition-spring);
   color: var(--color-text-secondary);
   line-height: 1;
 }
@@ -274,15 +300,23 @@ function handlePriorityChange(event: Event) {
 .btn-action:hover {
   background: rgba(255, 255, 255, 0.5);
   color: var(--color-text);
+  transform: scale(1.15);
+}
+
+.btn-action:active {
+  transform: scale(0.9);
+  transition-duration: 0.1s;
 }
 
 .btn-delete:hover {
   background: var(--color-danger-glass);
   color: var(--color-danger);
+  box-shadow: 0 0 12px rgba(224, 64, 96, 0.2);
 }
 
 .btn-edit:hover {
   background: var(--color-primary-glow);
   color: var(--color-primary);
+  box-shadow: 0 0 12px var(--color-primary-glow);
 }
 </style>
