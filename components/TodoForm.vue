@@ -7,6 +7,11 @@
       class="todo-input"
       autofocus
     />
+    <select v-model="selectedPriority" class="todo-priority-select">
+      <option value="low">Low</option>
+      <option value="medium">Medium</option>
+      <option value="high">High</option>
+    </select>
     <button type="submit" class="todo-add-btn" :disabled="!newTodoText.trim()">
       Add
     </button>
@@ -14,17 +19,21 @@
 </template>
 
 <script setup lang="ts">
+import type { Priority } from '~/composables/useTodos'
+
 const emit = defineEmits<{
-  add: [text: string]
+  add: [text: string, priority: Priority]
 }>()
 
 const newTodoText = ref('')
+const selectedPriority = ref<Priority>('medium')
 
 function handleSubmit() {
   const text = newTodoText.value.trim()
   if (!text) return
-  emit('add', text)
+  emit('add', text, selectedPriority.value)
   newTodoText.value = ''
+  selectedPriority.value = 'medium'
 }
 </script>
 
@@ -52,6 +61,22 @@ function handleSubmit() {
 
 .todo-input::placeholder {
   color: var(--color-text-secondary);
+}
+
+.todo-priority-select {
+  padding: 0.75rem 0.5rem;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.todo-priority-select:focus {
+  outline: none;
+  border-color: var(--color-primary);
 }
 
 .todo-add-btn {

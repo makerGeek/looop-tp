@@ -1,8 +1,11 @@
+export type Priority = 'low' | 'medium' | 'high'
+
 export interface Todo {
   id: string
   text: string
   completed: boolean
   createdAt: number
+  priority: Priority
 }
 
 const STORAGE_KEY = 'todo-app-todos'
@@ -15,7 +18,10 @@ function loadTodos(): Todo[] {
   if (import.meta.server) return []
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
-    return stored ? JSON.parse(stored) : []
+    if (!stored) return []
+    const parsed = JSON.parse(stored) as Todo[]
+    // Migrate older todos that lack a priority field
+    return parsed.map(t => ({ ...t, priority: t.priority ?? 'medium' }))
   } catch {
     return []
   }
@@ -41,12 +47,19 @@ export const useTodos = () => {
     }
   }
 
+  const priorityOrder: Record<Priority, number> = { high: 0, medium: 1, low: 2 }
+
   const sortedTodos = computed(() => {
     return [...todos.value].sort((a, b) => {
-      // Incomplete todos first, then sort by creation date (newest first)
+      // Incomplete todos first
       if (a.completed !== b.completed) {
         return a.completed ? 1 : -1
       }
+      // Then sort by priority (high > medium > low)
+      if (a.priority !== b.priority) {
+        return priorityOrder[a.priority] - priorityOrder[b.priority]
+      }
+      // Then by creation date (newest first)
       return b.createdAt - a.createdAt
     })
   })
@@ -55,7 +68,7 @@ export const useTodos = () => {
   const completedCount = computed(() => todos.value.filter(t => t.completed).length)
   const pendingCount = computed(() => totalCount.value - completedCount.value)
 
-  function addTodo(text: string): void {
+  function addTodo(text: string, priority: Priority = 'medium'): void {
     const trimmed = text.trim()
     if (!trimmed) return
 
@@ -63,7 +76,8 @@ export const useTodos = () => {
       id: generateId(),
       text: trimmed,
       completed: false,
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      priority
     }
 
     todos.value = [todo, ...todos.value]
@@ -92,6 +106,13 @@ export const useTodos = () => {
     saveTodos(todos.value)
   }
 
+  function updatePriority(id: string, priority: Priority): void {
+    todos.value = todos.value.map(t =>
+      t.id === id ? { ...t, priority } : t
+    )
+    saveTodos(todos.value)
+  }
+
   function clearCompleted(): void {
     todos.value = todos.value.filter(t => !t.completed)
     saveTodos(todos.value)
@@ -106,6 +127,7 @@ export const useTodos = () => {
     removeTodo,
     toggleTodo,
     editTodo,
+    updatePriority,
     clearCompleted
   }
 }

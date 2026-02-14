@@ -22,6 +22,17 @@
       />
     </div>
     <div class="todo-actions">
+      <select
+        :value="todo.priority"
+        class="priority-badge"
+        :class="`priority-${todo.priority}`"
+        title="Change priority"
+        @change="handlePriorityChange"
+      >
+        <option value="high">High</option>
+        <option value="medium">Medium</option>
+        <option value="low">Low</option>
+      </select>
       <button
         v-if="!isEditing"
         class="btn-icon btn-edit"
@@ -42,7 +53,7 @@
 </template>
 
 <script setup lang="ts">
-import type { Todo } from '~/composables/useTodos'
+import type { Todo, Priority } from '~/composables/useTodos'
 
 const props = defineProps<{
   todo: Todo
@@ -52,6 +63,7 @@ const emit = defineEmits<{
   toggle: [id: string]
   remove: [id: string]
   edit: [id: string, text: string]
+  updatePriority: [id: string, priority: Priority]
 }>()
 
 const isEditing = ref(false)
@@ -76,6 +88,11 @@ function saveEdit() {
 
 function cancelEdit() {
   isEditing.value = false
+}
+
+function handlePriorityChange(event: Event) {
+  const target = event.target as HTMLSelectElement
+  emit('updatePriority', props.todo.id, target.value as Priority)
 }
 </script>
 
@@ -135,9 +152,46 @@ function cancelEdit() {
 
 .todo-actions {
   display: flex;
+  align-items: center;
   gap: 0.25rem;
   margin-left: 0.5rem;
   flex-shrink: 0;
+}
+
+.priority-badge {
+  padding: 0.15rem 0.4rem;
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  border: 1px solid;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.priority-badge:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+.priority-high {
+  color: var(--color-priority-high);
+  background-color: var(--color-priority-high-bg);
+  border-color: var(--color-priority-high);
+}
+
+.priority-medium {
+  color: var(--color-priority-medium);
+  background-color: var(--color-priority-medium-bg);
+  border-color: var(--color-priority-medium);
+}
+
+.priority-low {
+  color: var(--color-priority-low);
+  background-color: var(--color-priority-low-bg);
+  border-color: var(--color-priority-low);
 }
 
 .btn-icon {
