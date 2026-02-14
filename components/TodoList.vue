@@ -33,6 +33,7 @@
         @remove="$emit('remove', $event)"
         @edit="(id, text) => $emit('edit', id, text)"
         @update-priority="(id, priority) => $emit('updatePriority', id, priority)"
+        @update-deadline="(id, deadline) => $emit('updateDeadline', id, deadline)"
       />
     </TransitionGroup>
 
@@ -60,6 +61,7 @@ defineEmits<{
   remove: [id: string]
   edit: [id: string, text: string]
   updatePriority: [id: string, priority: Priority]
+  updateDeadline: [id: string, deadline: number | null]
   clearCompleted: []
 }>()
 </script>
