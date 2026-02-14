@@ -7,34 +7,72 @@
 }
 
 :root {
-  --color-bg: #f5f5f5;
-  --color-surface: #ffffff;
-  --color-primary: #4f46e5;
-  --color-primary-hover: #4338ca;
-  --color-text: #1f2937;
-  --color-text-secondary: #6b7280;
-  --color-border: #e5e7eb;
-  --color-danger: #ef4444;
-  --color-danger-hover: #dc2626;
-  --color-success: #10b981;
-  --color-priority-high: #ef4444;
-  --color-priority-high-bg: #fef2f2;
-  --color-priority-medium: #f59e0b;
-  --color-priority-medium-bg: #fffbeb;
-  --color-priority-low: #6b7280;
-  --color-priority-low-bg: #f3f4f6;
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
-  --radius: 8px;
+  /* Liquid Glass Color System */
+  --color-bg-start: #e8d5f5;
+  --color-bg-mid: #c9dff7;
+  --color-bg-end: #d5eef7;
+
+  --color-glass: rgba(255, 255, 255, 0.45);
+  --color-glass-hover: rgba(255, 255, 255, 0.6);
+  --color-glass-strong: rgba(255, 255, 255, 0.7);
+  --color-glass-border: rgba(255, 255, 255, 0.5);
+  --color-glass-border-strong: rgba(255, 255, 255, 0.7);
+
+  --color-primary: #7c5cbf;
+  --color-primary-hover: #6a4baa;
+  --color-primary-glass: rgba(124, 92, 191, 0.8);
+  --color-primary-glow: rgba(124, 92, 191, 0.25);
+
+  --color-text: #2d1b4e;
+  --color-text-secondary: rgba(45, 27, 78, 0.6);
+  --color-text-on-primary: #ffffff;
+
+  --color-danger: #e04060;
+  --color-danger-hover: #cc3354;
+  --color-danger-glass: rgba(224, 64, 96, 0.12);
+
+  --color-success: #2eaa7f;
+  --color-success-glass: rgba(46, 170, 127, 0.12);
+
+  /* Priority colors – liquid tinted glass */
+  --color-priority-high: #e04060;
+  --color-priority-high-bg: rgba(224, 64, 96, 0.12);
+  --color-priority-medium: #e8a020;
+  --color-priority-medium-bg: rgba(232, 160, 32, 0.12);
+  --color-priority-low: rgba(45, 27, 78, 0.45);
+  --color-priority-low-bg: rgba(45, 27, 78, 0.06);
+
+  /* Glass effects */
+  --blur-sm: 10px;
+  --blur-md: 20px;
+  --blur-lg: 30px;
+
+  --shadow-glass: 0 4px 24px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-glass-hover: 0 8px 32px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+  --shadow-glass-inset: inset 0 1px 1px rgba(255, 255, 255, 0.6);
+  --shadow-glow: 0 0 20px var(--color-primary-glow);
+
+  --radius-sm: 12px;
+  --radius: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+
+  /* Transitions */
+  --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
-    Ubuntu, Cantarell, sans-serif;
-  background-color: var(--color-bg);
+  font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  background: linear-gradient(135deg, var(--color-bg-start), var(--color-bg-mid), var(--color-bg-end));
+  background-attachment: fixed;
   color: var(--color-text);
   line-height: 1.6;
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 button {
@@ -43,7 +81,23 @@ button {
   font-size: inherit;
 }
 
-input {
+input,
+select {
   font-family: inherit;
   font-size: inherit;
+}
+
+/* Utility class for glass panels */
+.glass {
+  background: var(--color-glass);
+  backdrop-filter: blur(var(--blur-md));
+  -webkit-backdrop-filter: blur(var(--blur-md));
+  border: 1px solid var(--color-glass-border);
+  box-shadow: var(--shadow-glass), var(--shadow-glass-inset);
+}
+
+/* Selection styling */
+::selection {
+  background: var(--color-primary-glow);
+  color: var(--color-text);
 }
