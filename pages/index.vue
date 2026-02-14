@@ -9,6 +9,8 @@
       @remove="removeTodo"
       @edit="editTodo"
       @update-priority="updatePriority"
+      @add-tag="addTagToTodo"
+      @remove-tag="removeTagFromTodo"
       @update-deadline="updateDeadline"
       @clear-completed="clearCompleted"
     />
@@ -25,6 +27,8 @@ const {
   toggleTodo,
   editTodo,
   updatePriority,
+  addTagToTodo,
+  removeTagFromTodo,
   updateDeadline,
   clearCompleted
 } = useTodos()

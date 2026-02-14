@@ -9,6 +9,36 @@
         autofocus
       />
     </div>
+    <div class="todo-form-tags">
+      <div class="tag-input-wrapper">
+        <input
+          v-model="tagInput"
+          type="text"
+          placeholder="Add tags..."
+          class="tag-input"
+          @keydown.enter.prevent="addTag"
+          @keydown.tab.prevent="addTag"
+        />
+        <button
+          v-if="tagInput.trim()"
+          type="button"
+          class="tag-add-btn"
+          @click="addTag"
+        >
+          +
+        </button>
+      </div>
+      <div v-if="selectedTags.length > 0" class="tag-list">
+        <span
+          v-for="tag in selectedTags"
+          :key="tag"
+          class="tag-badge"
+        >
+          {{ tag }}
+          <button type="button" class="tag-remove-btn" @click="removeTag(tag)">×</button>
+        </span>
+      </div>
+    </div>
     <div class="todo-form-actions">
       <select v-model="selectedPriority" class="todo-priority-select">
         <option value="low">Low</option>
@@ -34,11 +64,13 @@
 import type { Priority } from '~/composables/useTodos'
 
 const emit = defineEmits<{
-  add: [text: string, priority: Priority, deadline: number | null]
+  add: [text: string, priority: Priority, tags: string[], deadline: number | null]
 }>()
 
 const newTodoText = ref('')
 const selectedPriority = ref<Priority>('medium')
+const tagInput = ref('')
+const selectedTags = ref<string[]>([])
 const selectedDeadline = ref('')
 
 const todayDate = computed(() => {
@@ -46,15 +78,29 @@ const todayDate = computed(() => {
   return now.toISOString().split('T')[0]
 })
 
+function addTag() {
+  const tag = tagInput.value.trim()
+  if (tag && !selectedTags.value.includes(tag)) {
+    selectedTags.value.push(tag)
+  }
+  tagInput.value = ''
+}
+
+function removeTag(tag: string) {
+  selectedTags.value = selectedTags.value.filter(t => t !== tag)
+}
+
 function handleSubmit() {
   const text = newTodoText.value.trim()
   if (!text) return
   const deadline = selectedDeadline.value
     ? new Date(selectedDeadline.value + 'T23:59:59').getTime()
     : null
-  emit('add', text, selectedPriority.value, deadline)
+  emit('add', text, selectedPriority.value, [...selectedTags.value], deadline)
   newTodoText.value = ''
   selectedPriority.value = 'medium'
+  selectedTags.value = []
+  tagInput.value = ''
   selectedDeadline.value = ''
 }
 </script>
@@ -121,6 +167,118 @@ function handleSubmit() {
 
 .todo-input::placeholder {
   color: var(--color-text-secondary);
+}
+
+.todo-form-tags {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tag-input-wrapper {
+  display: flex;
+  gap: 0.375rem;
+}
+
+.tag-input {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-glass-border);
+  border-radius: var(--radius);
+  font-size: 0.8125rem;
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--color-text);
+  transition: all var(--transition-base);
+  backdrop-filter: blur(var(--blur-sm));
+  -webkit-backdrop-filter: blur(var(--blur-sm));
+}
+
+.tag-input:hover {
+  border-color: var(--color-glass-border-strong);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.tag-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-glow);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.tag-input::placeholder {
+  color: var(--color-text-secondary);
+}
+
+.tag-add-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid var(--color-glass-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-primary);
+  font-size: 1rem;
+  font-weight: 700;
+  transition: all var(--transition-base);
+  flex-shrink: 0;
+}
+
+.tag-add-btn:hover {
+  background: var(--color-primary-glow);
+  border-color: var(--color-primary);
+  transform: scale(1.05);
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.tag-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.5rem;
+  background: var(--color-primary-glow);
+  border: 1px solid rgba(124, 92, 191, 0.2);
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  backdrop-filter: blur(var(--blur-sm));
+  -webkit-backdrop-filter: blur(var(--blur-sm));
+  transition: all var(--transition-fast);
+}
+
+.tag-badge:hover {
+  background: rgba(124, 92, 191, 0.15);
+  transform: scale(1.05);
+}
+
+.tag-remove-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.875rem;
+  height: 0.875rem;
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0;
+  border-radius: 50%;
+  transition: all var(--transition-fast);
+  cursor: pointer;
+}
+
+.tag-remove-btn:hover {
+  background: rgba(124, 92, 191, 0.2);
+  color: var(--color-primary-hover);
 }
 
 .todo-form-actions {
