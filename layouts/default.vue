@@ -2,7 +2,10 @@
   <div class="app-layout">
     <header class="app-header">
       <div class="container">
-        <h1 class="app-title">📝 Todo App</h1>
+        <h1 class="app-title">
+          <span class="app-title-icon">✦</span>
+          Todo
+        </h1>
       </div>
     </header>
     <main class="app-main">
@@ -18,18 +21,42 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
 .app-header {
-  background-color: #facc15;
-  color: #1f2937;
-  padding: 1rem 0;
-  box-shadow: var(--shadow-md);
+  background: var(--color-glass-strong);
+  backdrop-filter: blur(var(--blur-lg));
+  -webkit-backdrop-filter: blur(var(--blur-lg));
+  border-bottom: 1px solid var(--color-glass-border);
+  padding: 1.25rem 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.04);
 }
 
 .app-title {
   font-size: 1.5rem;
   font-weight: 700;
+  color: var(--color-text);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  letter-spacing: -0.02em;
+}
+
+.app-title-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  background: linear-gradient(135deg, var(--color-primary), #a78bfa);
+  color: white;
+  border-radius: var(--radius-sm);
+  font-size: 1rem;
+  box-shadow: 0 2px 8px var(--color-primary-glow);
 }
 
 .app-main {
