@@ -21,8 +21,8 @@
 }
 
 .app-header {
-  background-color: var(--color-primary);
-  color: white;
+  background-color: #facc15;
+  color: #1f2937;
   padding: 1rem 0;
   box-shadow: var(--shadow-md);
 }
