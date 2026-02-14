@@ -61,6 +61,12 @@
   --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-base: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-spring: 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Liquid glass animation values */
+  --glass-hover-scale: 1.015;
+  --glass-active-scale: 0.98;
+  --glass-hover-brightness: 1.08;
 }
 
 body {
@@ -94,6 +100,28 @@ select {
   -webkit-backdrop-filter: blur(var(--blur-md));
   border: 1px solid var(--color-glass-border);
   box-shadow: var(--shadow-glass), var(--shadow-glass-inset);
+}
+
+/* Liquid glass keyframe animations */
+@keyframes glass-shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes glass-breathe {
+  0%, 100% { box-shadow: var(--shadow-glass), var(--shadow-glass-inset); }
+  50% { box-shadow: var(--shadow-glass-hover), var(--shadow-glass-inset), 0 0 24px rgba(124, 92, 191, 0.08); }
+}
+
+@keyframes orb-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes glass-refract {
+  0% { filter: hue-rotate(0deg) brightness(1); }
+  50% { filter: hue-rotate(4deg) brightness(var(--glass-hover-brightness)); }
+  100% { filter: hue-rotate(0deg) brightness(1); }
 }
 
 /* Selection styling */
