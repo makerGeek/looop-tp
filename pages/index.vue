@@ -30,6 +30,6 @@ const {
 
 <style scoped>
 .todo-page {
-  padding-top: 0.5rem;
+  padding-top: 0.25rem;
 }
 </style>
