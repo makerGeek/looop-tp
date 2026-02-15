@@ -123,7 +123,7 @@ defineEmits<{
 
 .btn-clear {
   padding: 0.375rem 0.875rem;
-  background: rgba(255, 255, 255, 0.4);
+  background: var(--color-surface-btn);
   border: 1px solid var(--color-glass-border);
   border-radius: 9999px;
   color: var(--color-text-secondary);
@@ -136,11 +136,11 @@ defineEmits<{
 }
 
 .btn-clear:hover {
-  border-color: rgba(224, 64, 96, 0.3);
+  border-color: var(--color-danger-tint-hover-border);
   color: var(--color-danger);
   background: var(--color-danger-glass);
   transform: translateY(-1px) scale(1.03);
-  box-shadow: 0 4px 12px rgba(224, 64, 96, 0.12);
+  box-shadow: 0 4px 12px var(--color-danger-tint-shadow);
 }
 
 .btn-clear:active {
