@@ -2,10 +2,12 @@
   <div class="app-layout">
     <header class="app-header">
       <div class="container header-container">
-        <h1 class="app-title">
-          <span class="app-title-icon">✦</span>
-          Todo
-        </h1>
+        <NuxtLink to="/" class="app-title-link">
+          <h1 class="app-title">
+            <span class="app-title-icon">✦</span>
+            Todo
+          </h1>
+        </NuxtLink>
         <ClientOnly>
           <button
             class="theme-toggle"
@@ -38,6 +40,7 @@
         <slot />
       </div>
     </main>
+    <AppFooter />
   </div>
 </template>
 
@@ -88,6 +91,11 @@ function cycleTheme() {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.app-title-link {
+  text-decoration: none;
+  color: inherit;
 }
 
 .app-title {
