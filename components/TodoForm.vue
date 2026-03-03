@@ -40,11 +40,7 @@
       </div>
     </div>
     <div class="todo-form-actions">
-      <select v-model="selectedPriority" class="todo-priority-select">
-        <option value="low">Low</option>
-        <option value="medium">Medium</option>
-        <option value="high">High</option>
-      </select>
+      <PrioritySelector v-model="selectedPriority" />
       <input
         v-model="selectedDeadline"
         type="date"
@@ -284,31 +280,6 @@ function handleSubmit() {
 .todo-form-actions {
   display: flex;
   gap: 0.5rem;
-}
-
-.todo-priority-select {
-  padding: 0.625rem 0.75rem;
-  border: 1px solid var(--color-glass-border);
-  border-radius: var(--radius);
-  font-size: 0.875rem;
-  background: var(--color-input-bg);
-  color: var(--color-text);
-  cursor: pointer;
-  transition: all var(--transition-base);
-  backdrop-filter: blur(var(--blur-sm));
-  -webkit-backdrop-filter: blur(var(--blur-sm));
-}
-
-.todo-priority-select:hover {
-  border-color: var(--color-glass-border-strong);
-  background: var(--color-input-bg-hover);
-  transform: translateY(-1px);
-}
-
-.todo-priority-select:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: var(--shadow-glow);
 }
 
 .todo-deadline-input {

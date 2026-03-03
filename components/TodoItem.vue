@@ -59,17 +59,11 @@
       </div>
     </div>
     <div class="todo-actions">
-      <select
-        :value="todo.priority"
-        class="priority-badge"
-        :class="`priority-${todo.priority}`"
-        title="Change priority"
-        @change="handlePriorityChange"
-      >
-        <option value="high">High</option>
-        <option value="medium">Medium</option>
-        <option value="low">Low</option>
-      </select>
+      <PrioritySelector
+        :model-value="todo.priority"
+        size="sm"
+        @update:model-value="(val: Priority) => $emit('updatePriority', todo.id, val)"
+      />
       <div v-if="isAddingTag" class="inline-tag-input-wrapper">
         <input
           ref="tagInput"
@@ -180,11 +174,6 @@ function saveTag() {
 function cancelAddTag() {
   isAddingTag.value = false
   newTag.value = ''
-}
-
-function handlePriorityChange(event: Event) {
-  const target = event.target as HTMLSelectElement
-  emit('updatePriority', props.todo.id, target.value as Priority)
 }
 
 function handleDeadlineChange(event: Event) {
@@ -515,50 +504,6 @@ const deadlineClass = computed(() => {
 
 .deadline-picker:hover::-webkit-calendar-picker-indicator {
   opacity: 0.8;
-}
-
-.priority-badge {
-  padding: 0.2rem 0.5rem;
-  border-radius: 9999px;
-  font-size: 0.7rem;
-  font-weight: 600;
-  border: 1px solid;
-  cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
-  text-align: center;
-  line-height: 1.4;
-  transition: all var(--transition-fast);
-  backdrop-filter: blur(var(--blur-sm));
-  -webkit-backdrop-filter: blur(var(--blur-sm));
-}
-
-.priority-badge:hover {
-  transform: scale(1.05);
-  filter: brightness(1.1);
-}
-
-.priority-badge:focus {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 1px;
-}
-
-.priority-high {
-  color: var(--color-priority-high);
-  background-color: var(--color-priority-high-bg);
-  border-color: var(--color-danger-tint-border);
-}
-
-.priority-medium {
-  color: var(--color-priority-medium);
-  background-color: var(--color-priority-medium-bg);
-  border-color: var(--color-priority-medium-border);
-}
-
-.priority-low {
-  color: var(--color-priority-low);
-  background-color: var(--color-priority-low-bg);
-  border-color: var(--color-priority-low-border);
 }
 
 .btn-action {
