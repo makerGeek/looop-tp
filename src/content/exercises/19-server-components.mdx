@@ -1,0 +1,41 @@
+---
+id: ex-19
+slug: server-components
+tier: advanced
+order: 19
+tierOrder: 1
+title: Server Components & Data Fetching
+objective: Fetch data in an RSC and stream to a client island.
+estMinutes: 20
+hints:
+  - "React Server Components run on the server and ship zero JS for their own rendering."
+  - "Fetch data directly with `await fetch()` — RSCs can be async function components."
+  - "`'use client'` marks a component as an interactive island; everything else stays on the server."
+starterPath: server-components/starter
+solutionPath: server-components/solution
+sandpackTemplate: readonly
+tags: [rsc, next, streaming]
+xp: 175
+---
+
+## Goal
+Read the example showing an async Server Component fetching users, then
+delegating interactivity to a `<LikeButton>` client island.
+
+## Concepts
+RSCs don't ship to the browser — they render on the server, and their output is
+serialized into the stream. Interactive state lives in `'use client'` boundaries.
+This exercise is read-only because the Sandpack iframe has no Node runtime.
+
+## Steps (read along)
+1. `page.tsx` is an async Server Component — it can `await fetch(...)`.
+2. It renders a client component, passing serializable props.
+3. The client component uses state — it ships JS to the browser.
+
+## Common pitfalls
+- Calling hooks (`useState`) inside a Server Component — it's a hard error.
+- Passing functions/class instances as props across the RSC/client boundary.
+
+## Stretch
+Try converting the demo's top-level page to a client component and notice the
+bundle grow. The principle: **keep islands small**.

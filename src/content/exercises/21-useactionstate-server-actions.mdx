@@ -1,0 +1,41 @@
+---
+id: ex-21
+slug: useactionstate-server-actions
+tier: advanced
+order: 21
+tierOrder: 3
+title: useActionState & Server Actions
+objective: Submit a form via a Server Action with typed action state.
+estMinutes: 20
+hints:
+  - "A Server Action is an async function marked `'use server'`."
+  - "`useActionState(action, initial)` returns `[state, formAction, isPending]`."
+  - "The action receives `(prevState, formData)` and returns the new state."
+starterPath: useactionstate-server-actions/starter
+solutionPath: useactionstate-server-actions/solution
+sandpackTemplate: readonly
+tags: [react-19, server-actions, forms]
+xp: 175
+---
+
+## Goal
+Read a complete Server Action example that validates input, returns either a
+success or an error, and wires up to the form via `useActionState`.
+
+## Concepts
+Server Actions erase the RPC boilerplate. You write the function, mark it
+`'use server'`, and pass it to a form's `action` prop. `useActionState` wraps
+the action on the client to give you the previous/current state and pending
+status — ideal for displaying inline validation errors.
+
+## Read-along
+1. `actions.ts` — the server function.
+2. `NewTodoForm.tsx` — client component using `useActionState`.
+
+## Common pitfalls
+- Returning non-serializable values — Server Action results must be serializable.
+- Forgetting to give each form field a `name` attribute — `formData.get(name)` needs it.
+
+## Stretch
+Add a `pending` spinner by destructuring `[state, action, pending]` from
+`useActionState`.

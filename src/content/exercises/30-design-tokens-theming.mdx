@@ -1,0 +1,40 @@
+---
+id: ex-30
+slug: design-tokens-theming
+tier: auxiliary
+order: 30
+tierOrder: 3
+title: Design Tokens & Theming with Tailwind v4 @theme
+objective: Define semantic tokens and ship a dark mode.
+estMinutes: 18
+hints:
+  - "Tailwind v4's `@theme` directive in CSS defines tokens; utilities are auto-generated."
+  - "Use CSS custom properties for values that differ between themes."
+  - "`:root` + `.dark` scoping lets you swap values via a `class` on `<html>`."
+starterPath: design-tokens-theming/starter
+solutionPath: design-tokens-theming/solution
+sandpackTemplate: react19-vite
+tags: [tailwind, theming, design-tokens]
+xp: 125
+---
+
+## Goal
+Swap between light and dark themes by toggling a class on the root, powered by
+CSS custom properties.
+
+## Concepts
+Good theming has two layers: **tokens** (the palette, scale, radii) and
+**semantic aliases** (`--color-primary`, `--color-bg`). Components reference the
+aliases; only the aliases change between themes.
+
+## Steps
+1. Define a palette + semantic tokens in the component (to stand in for
+   `@theme` — the sandbox doesn't ship with Tailwind).
+2. Drive colors off `var(--color-*)`.
+3. Toggle `document.documentElement.classList.toggle('dark')`.
+
+## Common pitfalls
+- Hard-coding hex values in components — makes theming impossible later.
+
+## Stretch
+Add a third theme (sepia) and show that the same components work unchanged.

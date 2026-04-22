@@ -1,0 +1,39 @@
+---
+id: ex-14
+slug: react-hook-form-zod
+tier: intermediate
+order: 14
+tierOrder: 4
+title: React Hook Form + Zod
+objective: Build a validated form with typed inferred schemas.
+estMinutes: 20
+hints:
+  - "Define a Zod schema: `const schema = z.object({ email: z.string().email() })`."
+  - "`type FormValues = z.infer<typeof schema>` — TS shape flows automatically."
+  - "In this sandbox we validate by hand to avoid extra deps; in a real project, use `useForm({ resolver: zodResolver(schema) })`."
+starterPath: react-hook-form-zod/starter
+solutionPath: react-hook-form-zod/solution
+sandpackTemplate: react19-vite
+tags: [forms, zod, validation]
+xp: 100
+---
+
+## Goal
+Validate an email + password form using a Zod schema and infer the TS type.
+
+## Concepts
+Zod lets you declare the shape and constraints once, then derive both the
+TypeScript type (`z.infer`) and a runtime parser. In production, pair it with
+React Hook Form's `zodResolver` for zero boilerplate validation.
+
+## Steps
+1. Declare the schema.
+2. On submit, run `schema.safeParse(values)` and render field errors.
+3. Block submit until the form parses successfully.
+
+## Common pitfalls
+- Using `parse` (throws) instead of `safeParse` (returns a result).
+- Re-declaring types manually instead of `z.infer`.
+
+## Stretch
+Add a `confirmPassword` field with a `.refine()` rule matching `password`.

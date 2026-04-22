@@ -1,0 +1,40 @@
+---
+id: ex-02
+slug: props-and-composition
+tier: beginner
+order: 2
+tierOrder: 2
+title: Props, Children & Composition
+objective: Pass typed props and compose components via children and slot props.
+estMinutes: 12
+hints:
+  - "React components receive `children` automatically — type it as `React.ReactNode`."
+  - "You can also accept a `title` prop and place it next to `{children}` for a layout component."
+  - "Avoid drilling — a `<Card>` that accepts children is more flexible than one with a fixed shape."
+starterPath: props-and-composition/starter
+solutionPath: props-and-composition/solution
+sandpackTemplate: react19-vite
+tags: [props, children, composition]
+xp: 50
+---
+
+## Goal
+Build a reusable `Card` layout component that accepts a `title` prop and
+arbitrary `children`.
+
+## Concepts
+Composition beats prop drilling. Rather than a `Card` with a `content: string`
+prop, accept `children: React.ReactNode` and let callers project whatever JSX
+they want inside.
+
+## Steps
+1. Define `interface CardProps { title: string; children: React.ReactNode }`.
+2. Render a rounded `<article>` with the `title` as an `<h3>` and the children
+   inside a `<div>`.
+3. In `App`, use two `<Card>` instances with different inner content.
+
+## Common pitfalls
+- Typing children as `string` — it's `React.ReactNode`, which covers elements, arrays, and text.
+
+## Stretch
+Add an optional `footer` slot prop (also `React.ReactNode`) and render it below the children.

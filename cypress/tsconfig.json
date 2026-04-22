@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["dom", "ES2022"],
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "types": ["cypress", "cypress-axe", "node"],
+    "isolatedModules": false,
+    "noEmit": true,
+    "resolveJsonModule": true
+  },
+  "include": ["**/*.ts"]
+}

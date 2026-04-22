@@ -1,0 +1,38 @@
+---
+id: ex-29
+slug: tooling-biome-ts
+tier: auxiliary
+order: 29
+tierOrder: 2
+title: Tooling — Biome + TS Strict + CI Hygiene
+objective: Configure Biome, strict TypeScript, and a minimal CI pipeline.
+estMinutes: 15
+hints:
+  - "Biome replaces ESLint + Prettier with one fast Rust binary."
+  - "Turn on `strict: true` in tsconfig.json — enable every safety rule."
+  - "A minimal CI: install → typecheck → lint → unit test → build."
+starterPath: tooling-biome-ts/starter
+solutionPath: tooling-biome-ts/solution
+sandpackTemplate: readonly
+tags: [tooling, typescript, ci]
+xp: 125
+---
+
+## Goal
+Read annotated config files showing a Biome + strict TS + CI setup.
+
+## Concepts
+Fast feedback loops matter. Biome lints + formats in one pass, TS strict mode
+catches bugs in dev, and a minimal CI runs all of that in under a minute.
+
+## Read-along
+1. `biome.json` — linter + formatter config.
+2. `tsconfig.json` — strict mode + path aliases.
+3. `.github/workflows/ci.yml` — typecheck, lint, test, build.
+
+## Common pitfalls
+- Leaving `skipLibCheck: false` and fighting third-party types forever.
+- Running formatter and linter in separate steps — Biome does both.
+
+## Stretch
+Add a pre-commit hook via `simple-git-hooks` that runs `biome check --apply`.

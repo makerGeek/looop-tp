@@ -1,0 +1,40 @@
+---
+id: ex-26
+slug: testing-vitest-rtl
+tier: expert
+order: 26
+tierOrder: 2
+title: Testing with Vitest + RTL + Cypress
+objective: Write unit, component, and E2E tests for one feature.
+estMinutes: 25
+hints:
+  - "Vitest + `@testing-library/react` = component tests that mimic users, not implementation."
+  - "Prefer queries like `getByRole('button', { name: /submit/i })` over `getByTestId`."
+  - "E2E tests (Cypress/Playwright) verify the happy path end-to-end; don't duplicate unit coverage."
+starterPath: testing-vitest-rtl/starter
+solutionPath: testing-vitest-rtl/solution
+sandpackTemplate: react19-vite
+tags: [testing, vitest, rtl]
+xp: 300
+---
+
+## Goal
+Rewrite a naive test to use Testing Library queries and assert on user-visible
+behavior.
+
+## Concepts
+A good test reads like a user: "When I click Add, a todo with 'Buy milk' appears."
+Tests that query the DOM by role/label survive refactors; tests that reach into
+implementation break every time you change a detail.
+
+## Steps (the sandbox includes a hand-rolled `render` + assertion helpers)
+1. Render `<Counter />`.
+2. Click the `+` button twice.
+3. Assert the heading reads `2`.
+
+## Common pitfalls
+- Using `container.querySelector` — breaks on refactors.
+- Checking state directly via refs — test behavior, not internals.
+
+## Stretch
+Add a test for keyboard interaction: press Enter to increment.

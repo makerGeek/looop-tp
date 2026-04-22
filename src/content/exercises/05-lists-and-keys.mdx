@@ -1,0 +1,39 @@
+---
+id: ex-05
+slug: lists-and-keys
+tier: beginner
+order: 5
+tierOrder: 5
+title: Lists & Keys
+objective: Render arrays with stable keys and derive filtered views.
+estMinutes: 12
+hints:
+  - "Map over the array and return JSX — `items.map(item => <li key={item.id}>{item.label}</li>)`."
+  - "Keys must be stable and unique among siblings. Array index keys only work if the list never reorders."
+  - "Derive `filtered` from state with `items.filter(...)` — don't store it in state."
+starterPath: lists-and-keys/starter
+solutionPath: lists-and-keys/solution
+sandpackTemplate: react19-vite
+tags: [lists, keys, filtering]
+xp: 50
+---
+
+## Goal
+Render a list of todo objects and let the user filter by a text query.
+
+## Concepts
+Keys help React identify which items changed, moved, or were removed.
+Derived state (the filtered array) should be computed during render, not stored
+in `useState` — otherwise you risk it getting out of sync.
+
+## Steps
+1. Seed state with a few todo items: `{ id, label, done }`.
+2. Add a search `<input>` and compute a filtered view by `query`.
+3. Render the filtered list as `<ul>` with one `<li key={item.id}>` per item.
+
+## Common pitfalls
+- Using the array index as a key when items can be reordered or removed.
+- Storing `filtered` in state and forgetting to update it.
+
+## Stretch
+Add a "hide completed" checkbox that further filters the list.
