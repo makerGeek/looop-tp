@@ -12,6 +12,12 @@ const withMDX = createMDX({
 const nextConfig = {
   pageExtensions: ["ts", "tsx", "js", "jsx", "md", "mdx"],
   reactStrictMode: true,
+  // Produce a fully static `out/` on `next build` so Cloudflare Pages can serve
+  // without a Node runtime. Skipped in test mode because the istanbul webpack
+  // hook below only runs under `next dev` anyway.
+  output: process.env.NODE_ENV === "test" ? undefined : "export",
+  images: { unoptimized: true },
+  trailingSlash: true,
   experimental: {
     mdxRs: false,
   },

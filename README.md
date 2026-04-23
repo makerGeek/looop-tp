@@ -26,7 +26,7 @@ an in-browser Sandpack editor pinned to React 19.
 | --- | --- |
 | `pnpm install` | install dependencies (Node 22 + pnpm 10) |
 | `pnpm dev` | start dev server at `http://localhost:3000` |
-| `pnpm build` | production build (SWC, no instrumentation) |
+| `pnpm build` | static export → `out/`, mirrored to `dist/` for Cloudflare Pages |
 | `pnpm start` | run the production build |
 | `pnpm typecheck` | `tsc --noEmit` |
 | `pnpm lint` | Biome check |
@@ -76,6 +76,18 @@ ever. `scripts/e2e.mjs` is a thin wrapper around `start-server-and-test`.
 RSC / Server Actions / Compiler / full-stack exercises use a read-only code
 viewer because the Sandpack iframe can't run Node. All live-runtime exercises
 execute entirely in-browser against a pinned React 19 runtime.
+
+## Deployment (Cloudflare Pages)
+
+Cloudflare Pages is configured (via its dashboard GitHub integration) to run
+`npm run build` and serve from `dist/`. Our `build` script runs Next's static
+export (which lands in `out/`) and then mirrors the directory to `dist/`, so
+the CF preset keeps working unchanged and every PR gets a preview URL from CF.
+
+In parallel, `.github/workflows/ci.yml` runs typecheck + unit tests + build on
+every push/PR as a fast gate (and uploads the built `dist/` as an artifact for
+debugging). The CF deploy itself still happens via CF's GitHub integration, not
+the action — the action is belt-and-suspenders.
 
 ## Non-goals
 
