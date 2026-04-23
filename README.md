@@ -67,11 +67,15 @@ ever. `scripts/e2e.mjs` is a thin wrapper around `start-server-and-test`.
 
 | Tier | Count | XP each | Topics |
 | --- | --- | --- | --- |
-| Beginner | 10 | 50 | JSX, props, `useState`, events, lists, narrowing, `useEffect`, `useRef`, Tailwind, shadcn composition |
-| Intermediate | 8 | 100 | `useReducer`, custom hooks, context + `use()`, React Hook Form + Zod, TanStack Query, TanStack Router, Zustand slices, App Router |
-| Advanced | 6 | 175 | RSC, `useOptimistic`, `useActionState` + server actions, Suspense + `use(promise)`, route handlers, parallel/intercepting routes |
-| Expert | 3 | 300 | React Compiler, testing trifecta, full-stack tRPC + Drizzle |
-| Auxiliary | 3 | 125 | A11y combobox, Biome + TS strict + CI, design tokens + theming |
+| Beginner | 12 | 50 | JSX, props, `useState`, events, lists, narrowing, `useEffect`, `useRef`, Tailwind, shadcn composition, **organizing components into files**, **typing shared models** |
+| Intermediate | 11 | 100 | `useReducer`, custom hooks, context + `use()`, React Hook Form + Zod, TanStack Query, TanStack Router, Zustand slices, App Router, **feature folder architecture**, **provider + hook pattern**, **container/presentational split** |
+| Advanced | 8 | 175 | RSC, `useOptimistic`, `useActionState` + server actions, Suspense + `use(promise)`, route handlers, parallel/intercepting routes, **error boundary across files**, **reducer + actions + types triad** |
+| Expert | 4 | 300 | React Compiler, testing trifecta, full-stack tRPC + Drizzle, **mini component library** |
+| Auxiliary | 4 | 125 | A11y combobox, Biome + TS strict + CI, design tokens + theming, **monorepo-style path aliases** |
+
+**Total: 39 exercises.** 9 of them (bolded) ship as multi-file projects so
+learners see realistic file trees: feature folders, barrels, provider/hook
+triads, design-system layouts, etc.
 
 RSC / Server Actions / Compiler / full-stack exercises use a read-only code
 viewer because the Sandpack iframe can't run Node. All live-runtime exercises

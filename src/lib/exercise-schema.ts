@@ -21,7 +21,7 @@ export const exerciseFrontmatterSchema = z.object({
     .min(1)
     .regex(/^[a-z0-9-]+$/, "slug must be lowercase kebab-case"),
   tier: tierEnum,
-  order: z.number().int().min(1).max(30),
+  order: z.number().int().min(1).max(99),
   tierOrder: z.number().int().min(1),
   title: z.string().min(1),
   objective: z.string().min(1),

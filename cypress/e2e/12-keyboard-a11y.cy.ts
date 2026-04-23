@@ -19,6 +19,6 @@ describe("Keyboard accessibility", () => {
     cy.get("[data-testid=sandpack-editor]", { timeout: 20000 }).should("be.visible");
     cy.visit("/learn/events-and-controlled-inputs");
     cy.get("body").trigger("keydown", { key: "j" });
-    cy.location("pathname").should("eq", "/learn/lists-and-keys");
+    cy.location("pathname").should("match", /^\/learn\/lists-and-keys\/?$/);
   });
 });

@@ -1,0 +1,41 @@
+---
+id: ex-36
+slug: error-boundary-files
+tier: advanced
+order: 36
+tierOrder: 7
+title: Error Boundary With Fallback Module
+objective: Split an Error Boundary into its component, fallback, and reset action across files.
+estMinutes: 18
+hints:
+  - "Error boundaries must still be class components in React 19."
+  - "Pass `fallback` as a prop so the boundary stays generic."
+  - "Reset by changing a `key` prop or calling a `reset` method exposed by the boundary."
+starterPath: error-boundary-files/starter
+solutionPath: error-boundary-files/solution
+sandpackTemplate: react19-vite
+tags: [error-boundary, react-19, architecture]
+xp: 175
+---
+
+## Goal
+Build a reusable `<ErrorBoundary>` that takes a `fallback` render prop, plus a
+separate `<FallbackUI>` component and a `BuggyChild` that intentionally throws.
+
+## Concepts
+Error boundaries catch render-phase errors in their subtree and let you ship a
+fallback instead of a blank page. Splitting the fallback UI into its own file
+keeps the boundary class focused on lifecycle plumbing.
+
+## Steps
+1. `ErrorBoundary.tsx` — class component with `getDerivedStateFromError` + `componentDidCatch` + a `reset()` method.
+2. `FallbackUI.tsx` — pure function component that renders the error and a "Try again" button.
+3. `BuggyChild.tsx` — throws on demand to demonstrate the boundary.
+4. `App.tsx` — composes them.
+
+## Common pitfalls
+- Putting business logic inside the boundary — it should only handle rendering.
+- Forgetting to reset internal state when the fallback retries.
+
+## Stretch
+Add a second boundary inside the first to demonstrate nested fallback scoping.

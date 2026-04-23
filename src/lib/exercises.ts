@@ -2,12 +2,21 @@ import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
 import { exerciseFrontmatterSchema } from "@/lib/exercise-schema";
-import { TIER_ORDER } from "@/lib/tiers";
+import { TIER_ORDER, TIERS } from "@/lib/tiers";
 import type { Exercise, Tier } from "@/types/exercise";
 
 const EXERCISE_DIR = path.join(process.cwd(), "src", "content", "exercises");
 
 let cache: Exercise[] | null = null;
+
+// Curriculum order for prev/next navigation: walk Beginner → Intermediate →
+// Advanced → Expert → Auxiliary, and within a tier follow `tierOrder`.
+// `order` is kept as a stable unique field but no longer drives navigation.
+function curriculumSort(a: Exercise, b: Exercise): number {
+  const tierDelta = TIERS[a.tier].order - TIERS[b.tier].order;
+  if (tierDelta !== 0) return tierDelta;
+  return a.tierOrder - b.tierOrder;
+}
 
 function loadExercises(): Exercise[] {
   if (cache) return cache;
@@ -28,7 +37,7 @@ function loadExercises(): Exercise[] {
     return { ...fm, body: content };
   });
 
-  parsed.sort((a, b) => a.order - b.order);
+  parsed.sort(curriculumSort);
   cache = parsed;
   return parsed;
 }

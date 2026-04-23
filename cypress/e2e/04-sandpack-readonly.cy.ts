@@ -12,7 +12,7 @@ describe("Sandpack readonly viewer", () => {
       .and("contain.text", "LikeButton");
   });
 
-  it("all 6 readonly exercises render the readonly viewer", () => {
+  it("all readonly exercises render the readonly viewer", () => {
     const readonlySlugs = [
       "server-components",
       "useactionstate-server-actions",
@@ -21,10 +21,13 @@ describe("Sandpack readonly viewer", () => {
       "react-compiler",
       "fullstack-trpc-drizzle",
       "tooling-biome-ts",
+      "monorepo-imports",
     ];
     for (const slug of readonlySlugs) {
       cy.visit(`/learn/${slug}`);
-      cy.get("[data-testid=readonly-viewer]", { timeout: 15000 }).should("be.visible");
+      cy.get("[data-testid=readonly-viewer]", { timeout: 15000 }).should(
+        "be.visible"
+      );
     }
   });
 });

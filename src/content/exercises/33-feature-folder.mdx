@@ -1,0 +1,42 @@
+---
+id: ex-33
+slug: feature-folder
+tier: intermediate
+order: 33
+tierOrder: 9
+title: Feature Folder Architecture
+objective: Organize a feature as a self-contained folder with components, hooks, types, and a barrel.
+estMinutes: 18
+hints:
+  - "Group by feature, not by file type — `features/todos/` over `components/` + `hooks/` + `types/`."
+  - "An `index.ts` exposes only the public surface; internals stay private to the folder."
+  - "Importers should write `import { TodoList, useTodos } from \"./features/todos\"`."
+starterPath: feature-folder/starter
+solutionPath: feature-folder/solution
+sandpackTemplate: react19-vite
+tags: [architecture, feature-folders, encapsulation]
+xp: 100
+---
+
+## Goal
+Build a `features/todos/` folder containing components, a hook, types, and a
+barrel that controls the public API.
+
+## Concepts
+The "feature folder" pattern colocates everything one feature needs.
+Refactoring is local — moving the feature is one folder move. The barrel acts
+as a private/public boundary: anything not exported there is internal.
+
+## Steps
+1. Inside `features/todos/`, create `types.ts`, `useTodos.ts`, `TodoList.tsx`,
+   `TodoForm.tsx`, and `index.ts`.
+2. The barrel exports only `<TodoList />`, `<TodoForm />`, and `useTodos`.
+3. `App.tsx` imports from `./features/todos` and composes the two components.
+
+## Common pitfalls
+- Importing private files from outside the folder — defeats the encapsulation.
+- Putting cross-cutting types in a feature — those belong in a shared `types/`.
+
+## Stretch
+Add a `features/todos/api.ts` that simulates fetching seed data and is consumed
+by `useTodos`.

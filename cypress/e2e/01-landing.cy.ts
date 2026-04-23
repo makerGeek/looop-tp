@@ -12,30 +12,25 @@ describe("Landing page", () => {
   });
 
   it("shows the correct exercise counts per tier", () => {
-    cy.get("[data-testid=tier-section][data-tier=beginner] [data-testid=exercise-card]").should(
-      "have.length",
-      10
-    );
-    cy.get("[data-testid=tier-section][data-tier=intermediate] [data-testid=exercise-card]").should(
-      "have.length",
-      8
-    );
-    cy.get("[data-testid=tier-section][data-tier=advanced] [data-testid=exercise-card]").should(
-      "have.length",
-      6
-    );
-    cy.get("[data-testid=tier-section][data-tier=expert] [data-testid=exercise-card]").should(
-      "have.length",
-      3
-    );
-    cy.get("[data-testid=tier-section][data-tier=auxiliary] [data-testid=exercise-card]").should(
-      "have.length",
-      3
-    );
+    cy.get(
+      "[data-testid=tier-section][data-tier=beginner] [data-testid=exercise-card]"
+    ).should("have.length", 12);
+    cy.get(
+      "[data-testid=tier-section][data-tier=intermediate] [data-testid=exercise-card]"
+    ).should("have.length", 11);
+    cy.get(
+      "[data-testid=tier-section][data-tier=advanced] [data-testid=exercise-card]"
+    ).should("have.length", 8);
+    cy.get(
+      "[data-testid=tier-section][data-tier=expert] [data-testid=exercise-card]"
+    ).should("have.length", 4);
+    cy.get(
+      "[data-testid=tier-section][data-tier=auxiliary] [data-testid=exercise-card]"
+    ).should("have.length", 4);
   });
 
-  it("renders 30 cards total and shows total XP", () => {
-    cy.get("[data-testid=exercise-card]").should("have.length", 30);
+  it("renders 39 cards total and shows total XP", () => {
+    cy.get("[data-testid=exercise-card]").should("have.length", 39);
     cy.get("[data-testid=total-xp]").should("contain.text", "XP available");
   });
 

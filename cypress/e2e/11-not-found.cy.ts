@@ -10,6 +10,6 @@ describe("Not-found behaviour", () => {
     cy.get("[data-testid=not-found]", { timeout: 10000 }).should("be.visible");
     cy.contains("Exercise not found").should("be.visible");
     cy.get("[data-testid=not-found-home]").click();
-    cy.location("pathname").should("eq", "/");
+    cy.location("pathname").should("match", /^\/$/);
   });
 });

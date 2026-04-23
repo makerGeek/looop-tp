@@ -25,9 +25,9 @@ describe("Progress persistence", () => {
     cy.get("[data-testid=complete-toggle]").click();
     cy.visit("/progress");
     cy.get("[data-testid=progress-xp]").should("contain.text", "325");
-    cy.get("[data-tier-summary=beginner]").should("contain.text", "1 / 10");
-    cy.get("[data-tier-summary=intermediate]").should("contain.text", "1 / 8");
-    cy.get("[data-tier-summary=advanced]").should("contain.text", "1 / 6");
+    cy.get("[data-tier-summary=beginner]").should("contain.text", "1 / 12");
+    cy.get("[data-tier-summary=intermediate]").should("contain.text", "1 / 11");
+    cy.get("[data-tier-summary=advanced]").should("contain.text", "1 / 8");
   });
 
   it("reset progress clears XP and completions", () => {

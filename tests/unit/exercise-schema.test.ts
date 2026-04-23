@@ -57,8 +57,11 @@ describe("exerciseFrontmatterSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("rejects order above 30", () => {
-    const result = exerciseFrontmatterSchema.safeParse({ ...valid, order: 99 });
+  it("rejects order above 99", () => {
+    const result = exerciseFrontmatterSchema.safeParse({
+      ...valid,
+      order: 200,
+    });
     expect(result.success).toBe(false);
   });
 });

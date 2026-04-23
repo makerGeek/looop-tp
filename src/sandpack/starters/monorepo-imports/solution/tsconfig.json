@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "jsx": "preserve",
+    "strict": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@app/*": ["./app/*"],
+      "@ui/*": ["./ui/*"],
+      "@lib/*": ["./lib/*"]
+    }
+  },
+  "include": ["app/**/*", "ui/**/*", "lib/**/*", "App.tsx"]
+}
