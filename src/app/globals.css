@@ -125,3 +125,22 @@ body {
   border-radius: 9999px;
   display: inline-block;
 }
+
+/* Sandpack ships a horizontal flex for its editor+preview. Below 640px the
+   two panes are unreadable side-by-side, so stack them vertically. Overrides
+   key off Sandpack's stable class names. */
+@media (max-width: 639px) {
+  .sp-layout {
+    flex-direction: column !important;
+  }
+  .sp-layout > .sp-stack {
+    min-width: 100% !important;
+    flex: 1 1 auto !important;
+  }
+  .sp-code-editor {
+    min-width: 100% !important;
+  }
+  .sp-preview-container {
+    min-width: 100% !important;
+  }
+}

@@ -15,21 +15,23 @@ export function TierSection({ tier, exercises }: Props) {
       data-testid="tier-section"
       data-tier={tier}
     >
-      <div className="flex items-baseline justify-between">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div>
           <h2
-            className="text-xl font-semibold tracking-tight"
+            className="text-lg font-semibold tracking-tight sm:text-xl"
             style={{ color: meta.accentVar }}
           >
             {meta.label}
           </h2>
-          <p className="text-sm text-muted-foreground">{meta.tagline}</p>
+          <p className="text-xs text-muted-foreground sm:text-sm">
+            {meta.tagline}
+          </p>
         </div>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-[11px] text-muted-foreground sm:text-xs">
           {exercises.length} exercises · {meta.xpPerExercise} XP each
         </span>
       </div>
-      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {exercises.map((ex) => (
           <ExerciseCard key={ex.slug} exercise={ex} />
         ))}

@@ -32,16 +32,18 @@ export function ProgressView({ tiered, all }: Props) {
   const nextExercise = all.find((e) => !state.completed[e.slug]) ?? all[0];
   return (
     <div
-      className="mx-auto w-full max-w-5xl space-y-8 px-6 py-10"
+      className="mx-auto w-full max-w-5xl space-y-6 px-4 py-6 sm:space-y-8 sm:px-6 sm:py-10"
       data-testid="progress-page"
     >
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Your progress</h1>
+        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
+          Your progress
+        </h1>
         <p className="text-sm text-muted-foreground">
           Internal progress tracker — everything stored locally in your browser.
         </p>
       </header>
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-4">
         <Card>
           <CardHeader>
             <CardTitle className="text-sm text-muted-foreground">
@@ -120,7 +122,7 @@ export function ProgressView({ tiered, all }: Props) {
         <CardHeader>
           <CardTitle>Per-tier completion</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-5">
+        <CardContent className="grid gap-3 grid-cols-3 sm:gap-4 sm:grid-cols-5">
           {TIER_ORDER.map((t) => (
             <div
               key={t}

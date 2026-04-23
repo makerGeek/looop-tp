@@ -58,11 +58,17 @@ export function SandpackEditor({
 
   return (
     <div className="flex h-full flex-col" data-testid="sandpack-editor">
-      <div className="flex items-center justify-between gap-2 border-b bg-muted/40 px-3 py-2">
-        <div className="text-xs text-muted-foreground">
-          {mode === "solution" ? "Viewing solution" : "Starter code"} · React 19
+      <div className="flex items-center justify-between gap-2 border-b bg-muted/40 px-2 py-1.5 sm:px-3 sm:py-2">
+        <div className="truncate text-[11px] text-muted-foreground sm:text-xs">
+          <span className="hidden sm:inline">
+            {mode === "solution" ? "Viewing solution" : "Starter code"} · React
+            19
+          </span>
+          <span className="sm:hidden">
+            {mode === "solution" ? "Solution" : "Starter"} · R19
+          </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -71,9 +77,10 @@ export function SandpackEditor({
               setMode("starter");
             }}
             data-testid="sandpack-reset"
+            aria-label="Reset code"
           >
             <RotateCcw className="h-3.5 w-3.5" />
-            Reset
+            <span className="hidden sm:inline">Reset</span>
           </Button>
           {mode === "solution" ? (
             <Button
@@ -81,9 +88,10 @@ export function SandpackEditor({
               size="sm"
               onClick={() => setMode("starter")}
               data-testid="sandpack-hide-solution"
+              aria-label="Hide solution"
             >
               <EyeOff className="h-3.5 w-3.5" />
-              Hide solution
+              <span className="hidden sm:inline">Hide solution</span>
             </Button>
           ) : (
             <Button
@@ -91,9 +99,10 @@ export function SandpackEditor({
               size="sm"
               onClick={() => setConfirmOpen(true)}
               data-testid="sandpack-show-solution"
+              aria-label="Show solution"
             >
               <Eye className="h-3.5 w-3.5" />
-              Show solution
+              <span className="hidden sm:inline">Show solution</span>
             </Button>
           )}
         </div>

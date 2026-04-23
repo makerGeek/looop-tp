@@ -24,26 +24,37 @@ export function ExerciseFooter({ exercise, prev, next }: Props) {
 
   return (
     <footer
-      className="flex flex-wrap items-center justify-between gap-3 border-t bg-background/95 px-6 py-4"
+      className="grid grid-cols-[auto_1fr_auto] items-center gap-2 border-t bg-background/95 px-3 py-3 sm:grid-cols-3 sm:gap-3 sm:px-6 sm:py-4"
       data-testid="exercise-footer"
     >
-      <div>
+      <div className="justify-self-start">
         {prev ? (
-          <Button variant="outline" asChild>
-            <Link href={`/learn/${prev.slug}`} data-testid="prev-link">
+          <Button variant="outline" size="sm" asChild className="sm:h-9 sm:px-4">
+            <Link
+              href={`/learn/${prev.slug}`}
+              data-testid="prev-link"
+              aria-label={`Previous: ${prev.title}`}
+              title={prev.title}
+            >
               <ArrowLeft className="h-4 w-4" />
-              {prev.title}
+              <span className="hidden sm:inline max-w-[14ch] truncate">
+                {prev.title}
+              </span>
+              <span className="sm:hidden">Prev</span>
             </Link>
           </Button>
         ) : (
-          <span className="text-sm text-muted-foreground">
-            Start of course
+          <span className="text-xs text-muted-foreground sm:text-sm">
+            <span className="hidden sm:inline">Start of course</span>
+            <span className="sm:hidden">Start</span>
           </span>
         )}
       </div>
-      <div className="flex items-center gap-3">
+      <div className="justify-self-center">
         <Button
           variant={hydrated && completed ? "secondary" : "default"}
+          size="sm"
+          className="sm:h-9 sm:px-4"
           onClick={() => {
             if (!hydrated) return;
             if (completed) uncomplete(exercise.slug);
@@ -54,26 +65,48 @@ export function ExerciseFooter({ exercise, prev, next }: Props) {
           {hydrated && completed ? (
             <>
               <CheckCircle2 className="h-4 w-4" />
-              Completed · +{exercise.xp} XP
+              <span className="hidden sm:inline">
+                Completed · +{exercise.xp} XP
+              </span>
+              <span className="sm:hidden">Done · +{exercise.xp}</span>
             </>
           ) : (
             <>
               <Circle className="h-4 w-4" />
-              Mark complete · +{exercise.xp} XP
+              <span className="hidden sm:inline">
+                Mark complete · +{exercise.xp} XP
+              </span>
+              <span className="sm:hidden">+{exercise.xp} XP</span>
             </>
           )}
         </Button>
+      </div>
+      <div className="justify-self-end">
         {next ? (
-          <Button asChild>
-            <Link href={`/learn/${next.slug}`} data-testid="next-link">
-              {next.title}
+          <Button size="sm" className="sm:h-9 sm:px-4" asChild>
+            <Link
+              href={`/learn/${next.slug}`}
+              data-testid="next-link"
+              aria-label={`Next: ${next.title}`}
+              title={next.title}
+            >
+              <span className="hidden sm:inline max-w-[14ch] truncate">
+                {next.title}
+              </span>
+              <span className="sm:hidden">Next</span>
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
         ) : (
-          <Button variant="secondary" asChild>
+          <Button
+            variant="secondary"
+            size="sm"
+            className="sm:h-9 sm:px-4"
+            asChild
+          >
             <Link href="/progress" data-testid="finish-link">
-              Finish course
+              <span className="hidden sm:inline">Finish course</span>
+              <span className="sm:hidden">Finish</span>
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>

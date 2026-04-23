@@ -33,7 +33,7 @@ export function CompletionMatrix({ tiered }: Props) {
                 {doneCount} / {list.length} complete
               </span>
             </div>
-            <ul className="grid grid-cols-5 gap-2 md:grid-cols-10">
+            <ul className="grid grid-cols-6 gap-1.5 sm:gap-2 md:grid-cols-12">
               {list.map((ex) => {
                 const done = hydrated && !!completed[ex.slug];
                 return (

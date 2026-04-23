@@ -14,20 +14,24 @@ export function LessonNarrative({ exercise, children }: Props) {
       className="flex h-full flex-col overflow-y-auto bg-background"
       data-testid="lesson-narrative"
     >
-      <header className="border-b px-6 py-5">
+      <header className="border-b px-4 py-4 sm:px-6 sm:py-5">
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <TierBadge tier={exercise.tier} />
           <span className="flex items-center gap-1">
             <Clock className="h-3 w-3" />
             {exercise.estMinutes} min
           </span>
-          <span>·</span>
-          <span>Exercise {exercise.order} of 30</span>
-          <span>·</span>
+          <span aria-hidden>·</span>
+          <span>
+            <span className="hidden sm:inline">Exercise </span>
+            {exercise.order}
+            <span className="hidden sm:inline"> of 39</span>
+          </span>
+          <span aria-hidden>·</span>
           <span>{exercise.xp} XP</span>
         </div>
         <h1
-          className="mt-3 text-2xl font-semibold tracking-tight"
+          className="mt-3 text-xl font-semibold tracking-tight sm:text-2xl"
           data-testid="lesson-title"
         >
           {exercise.title}
@@ -49,10 +53,10 @@ export function LessonNarrative({ exercise, children }: Props) {
           </div>
         ) : null}
       </header>
-      <article className="prose prose-sm max-w-none px-6 py-6 leading-relaxed dark:prose-invert prose-headings:font-semibold prose-pre:bg-muted prose-pre:text-foreground prose-code:rounded prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:font-mono prose-code:text-xs">
+      <article className="prose prose-sm max-w-none px-4 py-5 leading-relaxed dark:prose-invert prose-headings:font-semibold prose-pre:bg-muted prose-pre:text-foreground prose-code:rounded prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:font-mono prose-code:text-xs sm:px-6 sm:py-6">
         {children}
       </article>
-      <div className="px-6 pb-6">
+      <div className="px-4 pb-5 sm:px-6 sm:pb-6">
         <HintDrawer slug={exercise.slug} hints={exercise.hints} />
       </div>
     </div>
