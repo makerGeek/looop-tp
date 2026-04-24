@@ -153,6 +153,14 @@ body {
     min-width: 100% !important;
   }
   .sp-file-explorer-custom {
-    display: none !important;
+    /* Show at the top on mobile as a compact horizontal-scrollable rail
+       — give users a visual of the tree without eating editor height. */
+    display: block !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    max-height: 120px !important;
+    overflow: auto !important;
+    border-right: 0 !important;
+    border-bottom: 1px solid rgb(63 63 70) !important;
   }
 }

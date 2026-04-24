@@ -116,6 +116,10 @@ export function SandpackEditor({
           customSetup={customSetup}
           options={{
             activeFile,
+            // Surface every authored file as a tab at the top of the editor
+            // so mobile users (who don't get the side file explorer) can
+            // still switch files.
+            visibleFiles: Object.keys(files),
             recompileMode: "delayed",
             recompileDelay: 400,
           }}
