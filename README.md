@@ -27,12 +27,14 @@ A workflow at `.github/workflows/deploy.yml` builds and deploys on every push to
 
 ### Base path
 
-By default the site is served at `/<repo>/` on GitHub Pages. `vite.config.js` sets
-`base: '/looop-tp/'` to match this repo. For a custom domain (apex/`haier-hr.com`)
-build with:
+`vite.config.js` uses `base: './'` — relative paths that work anywhere:
+GitHub Pages (`/<repo>/`), Cloudflare Pages (root), custom domains, or even
+`file://` previews. No extra config needed.
+
+Override only if you need an absolute path:
 
 ```bash
-VITE_BASE=/ npm run build
+VITE_BASE=/some/path/ npm run build
 ```
 
 ## Structure

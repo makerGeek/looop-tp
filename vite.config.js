@@ -1,8 +1,9 @@
 import { defineConfig } from 'vite';
 
-// GitHub Pages lives at /<repo>/, so base must match the repo name.
-// Override with VITE_BASE when deploying elsewhere (e.g. custom domain: VITE_BASE=/).
-const base = process.env.VITE_BASE ?? '/looop-tp/';
+// Relative base paths so the build works at any URL:
+// GitHub Pages (/looop-tp/), Cloudflare Pages (root), custom domains, file://
+// Override with VITE_BASE if you ever need an absolute path.
+const base = process.env.VITE_BASE ?? './';
 
 export default defineConfig({
   base,
