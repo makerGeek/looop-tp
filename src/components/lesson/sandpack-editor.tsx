@@ -6,6 +6,7 @@ import {
   SandpackLayout,
   SandpackCodeEditor,
   SandpackPreview,
+  SandpackFileExplorer,
 } from "@codesandbox/sandpack-react";
 import type { SandpackFileMap, SandpackTemplate } from "@/types/exercise";
 import { Button } from "@/components/ui/button";
@@ -121,10 +122,16 @@ export function SandpackEditor({
           theme="dark"
         >
           <SandpackLayout className="!h-full !rounded-none !border-0">
+            <SandpackFileExplorer
+              autoHiddenFiles
+              className="sp-file-explorer-custom"
+              style={{ height: "100%" }}
+            />
             <SandpackCodeEditor
               showLineNumbers
               showInlineErrors
               wrapContent
+              showTabs
               style={{ height: "100%" }}
             />
             <SandpackPreview
@@ -170,32 +177,162 @@ export function SandpackEditor({
 }
 
 function ReadonlyCodeViewer({ files }: { files: SandpackFileMap }) {
-  const entries = Object.entries(files);
+  const entries = Object.entries(files).sort(([a], [b]) => a.localeCompare(b));
+  const [activePath, setActivePath] = useState<string | null>(
+    entries[0]?.[0] ?? null
+  );
+  const active = entries.find(([p]) => p === activePath);
+
+  // Group files by their folder for the left-hand tree.
+  const tree = buildTree(entries.map(([p]) => p));
+
+  if (entries.length === 0) {
+    return (
+      <div
+        className="flex h-full items-center justify-center border-l bg-zinc-950 p-6 text-sm text-zinc-400"
+        data-testid="readonly-viewer"
+      >
+        No code files provided.
+      </div>
+    );
+  }
+
   return (
     <div
-      className="flex h-full flex-col overflow-auto border-l bg-zinc-950"
+      className="flex h-full flex-col border-l bg-zinc-950 text-zinc-100"
       data-testid="readonly-viewer"
     >
       <div className="border-b border-zinc-800 bg-zinc-900/60 px-4 py-2 text-xs text-zinc-400">
         Read-only walkthrough · server-side / compiler exercise — not runnable
         in the browser sandbox.
       </div>
-      {entries.length === 0 ? (
-        <div className="p-6 text-sm text-zinc-400">
-          No code files provided.
+      <div className="flex min-h-0 flex-1 flex-col sm:flex-row">
+        <nav
+          className="max-h-40 overflow-auto border-b border-zinc-800 bg-zinc-900/40 py-2 text-xs sm:max-h-none sm:min-w-[200px] sm:max-w-[240px] sm:border-b-0 sm:border-r"
+          aria-label="Files"
+          data-testid="readonly-tree"
+        >
+          <FileTreeNode
+            node={tree}
+            depth={0}
+            activePath={activePath}
+            onSelect={setActivePath}
+          />
+        </nav>
+        <div className="flex min-h-0 flex-1 flex-col overflow-auto">
+          {active ? (
+            <>
+              <div className="sticky top-0 z-10 border-b border-zinc-800 bg-zinc-900 px-4 py-1.5 font-mono text-[11px] text-zinc-400">
+                {active[0]}
+              </div>
+              <pre className="overflow-x-auto px-4 py-3 text-xs leading-relaxed">
+                <code>{active[1].code}</code>
+              </pre>
+            </>
+          ) : null}
         </div>
-      ) : (
-        entries.map(([path, file]) => (
-          <div key={path} className="border-b border-zinc-800">
-            <div className="bg-zinc-900 px-4 py-1.5 text-xs font-mono text-zinc-400">
-              {path}
-            </div>
-            <pre className="overflow-x-auto px-4 py-3 text-xs leading-relaxed text-zinc-100">
-              <code>{file.code}</code>
-            </pre>
-          </div>
-        ))
-      )}
+      </div>
     </div>
+  );
+}
+
+interface TreeNode {
+  name: string;
+  path: string; // full path for files; folder path ending in "/" for folders
+  isFile: boolean;
+  children: TreeNode[];
+}
+
+function buildTree(paths: string[]): TreeNode {
+  const root: TreeNode = {
+    name: "",
+    path: "/",
+    isFile: false,
+    children: [],
+  };
+  for (const full of paths) {
+    const parts = full.split("/").filter(Boolean);
+    let cur = root;
+    let running = "";
+    parts.forEach((part, i) => {
+      running += "/" + part;
+      const isFile = i === parts.length - 1;
+      let child = cur.children.find((c) => c.name === part);
+      if (!child) {
+        child = {
+          name: part,
+          path: isFile ? full : running + "/",
+          isFile,
+          children: [],
+        };
+        cur.children.push(child);
+      }
+      cur = child;
+    });
+  }
+  const sort = (n: TreeNode) => {
+    n.children.sort((a, b) => {
+      if (a.isFile === b.isFile) return a.name.localeCompare(b.name);
+      return a.isFile ? 1 : -1; // folders first
+    });
+    n.children.forEach(sort);
+  };
+  sort(root);
+  return root;
+}
+
+function FileTreeNode({
+  node,
+  depth,
+  activePath,
+  onSelect,
+}: {
+  node: TreeNode;
+  depth: number;
+  activePath: string | null;
+  onSelect: (p: string) => void;
+}) {
+  return (
+    <ul className={depth === 0 ? "" : "border-l border-zinc-800 pl-2"}>
+      {node.children.map((child) => {
+        if (child.isFile) {
+          const active = child.path === activePath;
+          return (
+            <li key={child.path}>
+              <button
+                type="button"
+                onClick={() => onSelect(child.path)}
+                className={
+                  "w-full truncate px-3 py-1 text-left font-mono text-[11px] " +
+                  (active
+                    ? "bg-zinc-800 text-zinc-50"
+                    : "text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-200")
+                }
+                style={{ paddingLeft: 12 + depth * 8 }}
+                data-file={child.path}
+              >
+                {child.name}
+              </button>
+            </li>
+          );
+        }
+        return (
+          <li key={child.path}>
+            <div
+              className="px-3 py-1 font-mono text-[11px] font-semibold text-zinc-500"
+              style={{ paddingLeft: 12 + depth * 8 }}
+            >
+              {child.name}/
+            </div>
+            <FileTreeNode
+              node={child}
+              depth={depth + 1}
+              activePath={activePath}
+              onSelect={onSelect}
+            />
+          </li>
+        );
+      })}
+    </ul>
   );
 }

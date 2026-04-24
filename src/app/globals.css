@@ -126,9 +126,18 @@ body {
   display: inline-block;
 }
 
+/* Sandpack: give the file explorer a reasonable desktop width with a visible
+   border, and hide it on small screens (the editor's own file tabs are
+   enough when horizontal space is tight). */
+.sp-file-explorer-custom {
+  min-width: 180px !important;
+  max-width: 220px !important;
+  border-right: 1px solid rgb(63 63 70) !important;
+}
+
 /* Sandpack ships a horizontal flex for its editor+preview. Below 640px the
-   two panes are unreadable side-by-side, so stack them vertically. Overrides
-   key off Sandpack's stable class names. */
+   two panes are unreadable side-by-side, so stack them vertically and hide
+   the file explorer. Overrides key off Sandpack's stable class names. */
 @media (max-width: 639px) {
   .sp-layout {
     flex-direction: column !important;
@@ -142,5 +151,8 @@ body {
   }
   .sp-preview-container {
     min-width: 100% !important;
+  }
+  .sp-file-explorer-custom {
+    display: none !important;
   }
 }
