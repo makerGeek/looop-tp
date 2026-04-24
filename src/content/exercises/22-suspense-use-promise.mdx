@@ -1,0 +1,39 @@
+---
+id: ex-22
+slug: suspense-use-promise
+tier: advanced
+order: 22
+tierOrder: 4
+title: Suspense Streaming & use(promise)
+objective: Unwrap a promise on the client with Suspense.
+estMinutes: 18
+hints:
+  - "`use(promise)` suspends the component until the promise resolves."
+  - "Wrap the consuming component in `<Suspense fallback={...}>`."
+  - "Create the promise outside of render (or memoize it) so it isn't recreated every render."
+starterPath: suspense-use-promise/starter
+solutionPath: suspense-use-promise/solution
+sandpackTemplate: react19-vite
+tags: [react-19, suspense, use]
+xp: 175
+---
+
+## Goal
+Render a component that `use()`s a promise, wrapped in a `<Suspense>` fallback.
+
+## Concepts
+React 19's `use()` hook can unwrap promises (and contexts). When called on an
+unresolved promise, the nearest `<Suspense>` boundary shows its fallback until
+the promise resolves. Great for progressive rendering.
+
+## Steps
+1. Build a `fetchProfile()` that resolves after 1s.
+2. Create the promise once at the top (outside the suspending component).
+3. Inside the component, `const data = use(promise)` and render it.
+4. Wrap the component in `<Suspense fallback={<Skeleton />}>`.
+
+## Common pitfalls
+- Creating the promise inside the suspending component — it re-suspends forever.
+
+## Stretch
+Add a `refresh` button that creates a new promise and forces re-suspension.

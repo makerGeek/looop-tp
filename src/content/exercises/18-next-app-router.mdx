@@ -1,0 +1,38 @@
+---
+id: ex-18
+slug: next-app-router
+tier: intermediate
+order: 18
+tierOrder: 8
+title: Next.js 15 App Router Basics
+objective: Build a nested layout with a loading and error boundary.
+estMinutes: 18
+hints:
+  - "Each folder in `app/` maps to a route. `layout.tsx` wraps all children."
+  - "A `loading.tsx` sibling file shows a fallback while the route streams."
+  - "An `error.tsx` sibling catches errors thrown in the segment."
+starterPath: next-app-router/starter
+solutionPath: next-app-router/solution
+sandpackTemplate: react19-vite
+tags: [next, app-router, layouts]
+xp: 100
+---
+
+## Goal
+Simulate nested layouts with shared chrome, a loading state, and an error boundary.
+
+## Concepts
+In Next's App Router, the filesystem is the routing tree. `layout.tsx` persists
+across child route changes. `loading.tsx` wraps the segment in a Suspense boundary
+automatically. `error.tsx` mounts an error boundary for the segment.
+
+## Steps
+1. Build a `RootLayout` that renders a nav and `{children}`.
+2. Add a pseudo-route state: `idle | loading | error | ready`.
+3. Render a `<Loading />` during `loading`, an `<ErrorPanel />` during `error`.
+
+## Common pitfalls
+- Placing all state in `layout.tsx` — it doesn't remount on route change.
+
+## Stretch
+Add a `notFound` state and render a 404 panel.

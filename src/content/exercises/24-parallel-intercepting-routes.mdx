@@ -1,0 +1,39 @@
+---
+id: ex-24
+slug: parallel-intercepting-routes
+tier: advanced
+order: 24
+tierOrder: 6
+title: Parallel & Intercepting Routes
+objective: Build a modal-from-link pattern via intercepted routes.
+estMinutes: 20
+hints:
+  - "`@slot` folders become named parallel slots rendered alongside `children`."
+  - "`(.)`, `(..)`, `(...)` prefixes intercept navigation and render a modal over the previous page."
+  - "Great for 'click to enlarge' modals that remain deep-linkable."
+starterPath: parallel-intercepting-routes/starter
+solutionPath: parallel-intercepting-routes/solution
+sandpackTemplate: readonly
+tags: [next, routing, modal]
+xp: 175
+---
+
+## Goal
+Read the folder layout and pages that make a photo modal open via
+intercepting routes.
+
+## Concepts
+Parallel routes render multiple segments in the same layout via named slots.
+Intercepting routes let a URL render "as a modal" without losing its
+deep-linkability — `/feed/photo/42` is still a valid shareable URL.
+
+## Read-along
+1. `app/@modal/(.)photo/[id]/page.tsx` — intercepted modal route.
+2. `app/photo/[id]/page.tsx` — canonical standalone page.
+3. `app/layout.tsx` — renders `{children}` and `{modal}` side by side.
+
+## Common pitfalls
+- Forgetting `default.tsx` in a parallel slot — missing content on some pages will break rendering.
+
+## Stretch
+Add a `loading.tsx` inside `@modal` so the modal shell paints instantly while the image streams.

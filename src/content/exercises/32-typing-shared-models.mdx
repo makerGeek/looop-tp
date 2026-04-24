@@ -1,0 +1,39 @@
+---
+id: ex-32
+slug: typing-shared-models
+tier: beginner
+order: 32
+tierOrder: 12
+title: Typing Shared Models
+objective: Extract shared TypeScript types into a single module that both UI and logic depend on.
+estMinutes: 12
+hints:
+  - "Put domain types (`User`, `Todo`, `Order`) in a `types.ts` next to the feature."
+  - "Both component props and helper functions import from `types.ts` — single source of truth."
+  - "Prefer `interface` for shapes you might extend, `type` for unions/intersections."
+starterPath: typing-shared-models/starter
+solutionPath: typing-shared-models/solution
+sandpackTemplate: react19-vite
+tags: [typescript, types, organization]
+xp: 50
+---
+
+## Goal
+Move the inline `Todo` shape into `types.ts` and reuse it across `App.tsx`,
+`TodoItem.tsx`, and a `utils.ts` helper.
+
+## Concepts
+A type duplicated in three files is three sources of truth — and three places to
+forget to update. Centralizing models keeps the codebase cohesive as it grows.
+
+## Steps
+1. Create `types.ts` exporting `interface Todo { id: string; label: string; done: boolean }`.
+2. Update `TodoItem.tsx` to import `Todo` instead of redeclaring it.
+3. Update `utils.ts` (a small `summarize` helper) to also import the shared type.
+4. `App.tsx` consumes both.
+
+## Common pitfalls
+- Importing `interface` definitions from a `.tsx` file with side effects — stick to a `.ts` file for pure types.
+
+## Stretch
+Add a `Priority` enum to `types.ts` and thread it through `Todo` and `summarize`.

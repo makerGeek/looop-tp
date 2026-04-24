@@ -1,0 +1,42 @@
+---
+id: ex-28
+slug: a11y-custom-combobox
+tier: auxiliary
+order: 28
+tierOrder: 1
+title: Accessibility — Custom Combobox
+objective: Make a custom combobox pass axe by implementing the right ARIA pattern.
+estMinutes: 20
+hints:
+  - "Combobox role pattern: `role='combobox'`, `aria-expanded`, `aria-controls`, `aria-activedescendant`."
+  - "Keyboard: ArrowUp/Down moves active option; Enter selects; Escape closes."
+  - "Listbox items use `role='option'` and `aria-selected`."
+starterPath: a11y-custom-combobox/starter
+solutionPath: a11y-custom-combobox/solution
+sandpackTemplate: react19-vite
+tags: [accessibility, aria, keyboard]
+xp: 125
+---
+
+## Goal
+Take the naive custom select and make it accessible — proper roles, keyboard
+navigation, and screen-reader announcements.
+
+## Concepts
+Screen readers rely on roles + state attributes, not CSS. A combobox with only
+`<div>`s and `onClick` is invisible to assistive tech. WAI-ARIA defines the
+exact pattern; implement it and axe will be quiet.
+
+## Steps
+1. Give the trigger `role='combobox'`, `aria-expanded`, `aria-controls`.
+2. Give the listbox `role='listbox'` and each item `role='option'` with
+   `aria-selected`.
+3. Handle ArrowUp/Down/Enter/Escape on the trigger.
+4. Use `aria-activedescendant` to point to the currently highlighted option id.
+
+## Common pitfalls
+- Clicking-only selects exclude keyboard users.
+- Trap-less focus: clicking outside should close the popup.
+
+## Stretch
+Add typeahead — pressing a letter focuses the first option starting with it.

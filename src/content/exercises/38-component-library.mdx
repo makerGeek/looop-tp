@@ -1,0 +1,43 @@
+---
+id: ex-38
+slug: component-library
+tier: expert
+order: 38
+tierOrder: 4
+title: Mini Component Library
+objective: Build a tiny shadcn-style component library with tokens, primitives, and a barrel.
+estMinutes: 25
+hints:
+  - "Tokens (colors, radii, spacing) live in `tokens.ts` and feed every primitive."
+  - "Each primitive is a folder: `Button/Button.tsx` + `Button/index.ts`."
+  - "The top-level `index.ts` re-exports the public surface — that is your library entrypoint."
+starterPath: component-library/starter
+solutionPath: component-library/solution
+sandpackTemplate: react19-vite
+tags: [component-library, design-system, architecture]
+xp: 300
+---
+
+## Goal
+Ship a `lib/ui/` folder with `tokens.ts`, a `Button/` and `Card/` primitive, a
+shared `cn` helper, and an `index.ts` library entrypoint.
+
+## Concepts
+Real component libraries have a strict layout: tokens at the bottom,
+primitives that consume tokens, a shared utility layer, and a single
+entrypoint. This makes tree-shaking and refactors predictable.
+
+## Steps
+1. `lib/ui/tokens.ts` — exports `tokens` constant.
+2. `lib/ui/cn.ts` — tiny class-name joiner used by primitives.
+3. `lib/ui/Button/Button.tsx` + `Button/index.ts`.
+4. `lib/ui/Card/Card.tsx` + `Card/index.ts`.
+5. `lib/ui/index.ts` — exports `Button`, `Card`, and `tokens`.
+6. `App.tsx` — `import { Button, Card } from "./lib/ui"`.
+
+## Common pitfalls
+- Importing from primitive internals (`./lib/ui/Button/Button`) — defeats tree-shaking and refactors.
+- Mixing tokens between hardcoded values and the tokens object — pick one source of truth.
+
+## Stretch
+Add a `lib/ui/Stack/` primitive that handles spacing using `tokens.space`.

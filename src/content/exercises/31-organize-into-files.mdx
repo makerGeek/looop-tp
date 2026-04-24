@@ -1,0 +1,41 @@
+---
+id: ex-31
+slug: organize-into-files
+tier: beginner
+order: 31
+tierOrder: 11
+title: Organizing Components Into Files
+objective: Split a single-file app into a small file tree of focused components.
+estMinutes: 12
+hints:
+  - "Each component should live in its own `.tsx` file with the same name."
+  - "Use `export default` for the main component and named imports/exports for siblings."
+  - "An `index.ts` barrel can re-export grouped components for terse imports."
+starterPath: organize-into-files/starter
+solutionPath: organize-into-files/solution
+sandpackTemplate: react19-vite
+tags: [files, organization, refactor]
+xp: 50
+---
+
+## Goal
+Take a single-file app and split it into `Header.tsx`, `Sidebar.tsx`, `Main.tsx`,
+and an `App.tsx` that composes them.
+
+## Concepts
+File-per-component is the dominant React convention because it makes navigation
+and reviews easier. A short barrel (`components/index.ts`) lets callers write
+`import { Header, Main } from "./components"`.
+
+## Steps
+1. In `App.tsx`, replace the inline header markup with `<Header />` from `./components/Header`.
+2. Do the same for `<Sidebar />` and `<Main />`.
+3. Create `components/index.ts` that re-exports all three.
+4. Update `App.tsx` to import from the barrel.
+
+## Common pitfalls
+- Default-exporting from each file but then importing as a named import — pick one style per file.
+- Circular imports — never import the parent from a child.
+
+## Stretch
+Add a `Footer` component and slot it after `Main`.

@@ -1,0 +1,39 @@
+---
+id: ex-12
+slug: custom-hooks
+tier: intermediate
+order: 12
+tierOrder: 2
+title: Custom Hooks
+objective: Extract reusable stateful logic with a typed return tuple.
+estMinutes: 15
+hints:
+  - "A custom hook is just a function whose name starts with `use` and that calls other hooks."
+  - "Return a tuple `[value, setter]` or an object `{ value, setValue }` — pick one and be consistent."
+  - "Type the return explicitly to catch refactor regressions."
+starterPath: custom-hooks/starter
+solutionPath: custom-hooks/solution
+sandpackTemplate: react19-vite
+tags: [custom-hooks, patterns]
+xp: 100
+---
+
+## Goal
+Build a `useLocalStorage<T>` hook that reads/writes a key in `localStorage`
+and a `useToggle` hook.
+
+## Concepts
+Custom hooks let you bottle up stateful logic so components stay focused on
+rendering. Naming rules: start with `use`, call hooks at the top level.
+
+## Steps
+1. Implement `useLocalStorage<T>(key, initial)` — returns `[value, setValue]` and persists via `localStorage`.
+2. Implement `useToggle(initial = false)` — returns `[on, toggle]`.
+3. Use both in `App` to persist a dark-mode toggle.
+
+## Common pitfalls
+- Reading `localStorage` during SSR — guard with `typeof window !== 'undefined'`.
+- Forgetting `JSON.stringify`/`parse` for non-string values.
+
+## Stretch
+Add a cross-tab sync listener via the `storage` event.

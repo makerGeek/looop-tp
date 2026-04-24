@@ -1,0 +1,38 @@
+---
+id: ex-27
+slug: fullstack-trpc-drizzle
+tier: expert
+order: 27
+tierOrder: 3
+title: Full-Stack Slice — tRPC + Drizzle + TanStack Query
+objective: Ship a typed end-to-end CRUD vertical.
+estMinutes: 30
+hints:
+  - "tRPC gives you typed server procedures invoked as regular functions on the client."
+  - "Drizzle is a SQL-first ORM — you write schemas, get typed query builders."
+  - "TanStack Query handles cache + invalidation for the tRPC client; tRPC ships a first-class adapter."
+starterPath: fullstack-trpc-drizzle/starter
+solutionPath: fullstack-trpc-drizzle/solution
+sandpackTemplate: readonly
+tags: [trpc, drizzle, fullstack]
+xp: 300
+---
+
+## Goal
+Read a minimal full-stack slice: Drizzle schema → tRPC router → React client
+that uses TanStack Query via `@trpc/tanstack-react-query`.
+
+## Concepts
+End-to-end types are the whole point: your DB types flow into your router,
+into your client, into your components. No codegen step, no drift.
+
+## Read-along
+1. `db/schema.ts` — Drizzle table definitions (SQLite).
+2. `server/routers/todos.ts` — a tRPC router with `list` / `add` procedures.
+3. `components/TodoList.tsx` — the client using `useQuery` + `useMutation`.
+
+## Common pitfalls
+- Sharing server-only code to the client — use `"server-only"` or split packages.
+
+## Stretch
+Add optimistic updates by combining this exercise with exercise #20 (`useOptimistic`).

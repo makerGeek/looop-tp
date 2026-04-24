@@ -1,0 +1,38 @@
+---
+id: ex-17
+slug: zustand-slices
+tier: intermediate
+order: 17
+tierOrder: 7
+title: Zustand Store with Slices
+objective: Compose a persisted store with sliced actions.
+estMinutes: 18
+hints:
+  - "`create((set, get) => ({ state, actions }))` — no reducers, no providers."
+  - "Split large stores into slices and compose them: `create((...a) => ({ ...userSlice(...a), ...cartSlice(...a) }))`."
+  - "Use the `persist` middleware to save to localStorage."
+starterPath: zustand-slices/starter
+solutionPath: zustand-slices/solution
+sandpackTemplate: react19-vite
+tags: [zustand, state, persist]
+xp: 100
+---
+
+## Goal
+Build a cart store with two slices (items + discount) and selectors.
+
+## Concepts
+Zustand is a tiny flux-ish store that reads like plain state + functions.
+Slices keep domains separated; selectors keep components from re-rendering on
+unrelated changes.
+
+## Steps
+1. Define `itemsSlice` (add, remove, clear) and `discountSlice` (setCode).
+2. Compose them in a single `create(...)` call.
+3. Subscribe only to what each component needs.
+
+## Common pitfalls
+- Subscribing to the whole state — components re-render on every change.
+
+## Stretch
+Add a derived selector for `total` that multiplies items and applies the discount.

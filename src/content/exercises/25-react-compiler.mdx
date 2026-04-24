@@ -1,0 +1,40 @@
+---
+id: ex-25
+slug: react-compiler
+tier: expert
+order: 25
+tierOrder: 1
+title: React Compiler & Memoization Audit
+objective: Enable the compiler and verify fewer manual useMemos.
+estMinutes: 20
+hints:
+  - "Install `babel-plugin-react-compiler` and enable it in `next.config.mjs` with `experimental.reactCompiler: true`."
+  - "The compiler auto-memoizes hooks, components, and props. You can remove most `useMemo`/`useCallback` calls."
+  - "Use the ESLint rule `react-hooks/exhaustive-deps` + the compiler's eslint plugin to catch unsafe patterns."
+starterPath: react-compiler/starter
+solutionPath: react-compiler/solution
+sandpackTemplate: readonly
+tags: [react-compiler, performance]
+xp: 300
+---
+
+## Goal
+Read an annotated before/after of a component that used to need manual memoization.
+
+## Concepts
+The React Compiler (stable in React 19) infers which values are stable, which
+need memoization, and which can be hoisted. You write idiomatic JS; it emits
+code equivalent to what you'd write by hand with `useMemo`/`useCallback`.
+
+## Read-along
+1. `before.tsx` — hand-memoized component with `useMemo` + `useCallback`.
+2. `after.tsx` — identical behavior, manual memoization removed, compiler handles it.
+3. `next.config.mjs` — enables `experimental.reactCompiler: true`.
+
+## Common pitfalls
+- Mutating values inside render — the compiler assumes purity.
+- Writing non-deterministic effects — they still need careful dep arrays.
+
+## Stretch
+Profile the same component with and without the compiler in React DevTools —
+the render counts should match.

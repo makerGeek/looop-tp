@@ -1,0 +1,41 @@
+---
+id: ex-20
+slug: useoptimistic
+tier: advanced
+order: 20
+tierOrder: 2
+title: useOptimistic for Instant UI
+objective: Render optimistic updates alongside a pending mutation.
+estMinutes: 20
+hints:
+  - "`useOptimistic(state, reducer)` returns `[optimisticState, addOptimistic]`."
+  - "Call `addOptimistic(value)` synchronously before awaiting the mutation."
+  - "When the real state updates, `optimisticState` snaps back to it."
+starterPath: useoptimistic/starter
+solutionPath: useoptimistic/solution
+sandpackTemplate: react19-vite
+tags: [react-19, hooks, optimistic]
+xp: 175
+---
+
+## Goal
+Add a message and see it appear instantly, even while the fake API call is
+still "in flight".
+
+## Concepts
+`useOptimistic` is a React 19 hook that derives a temporary optimistic state
+from a base state. You call the optimistic updater synchronously in a
+transition, and the UI shows the predicted result immediately.
+
+## Steps
+1. Keep real `messages` in `useState`.
+2. Use `useOptimistic(messages, (curr, next) => [...curr, next])`.
+3. On submit: `addOptimistic(draft)`, then `await send()`, then `setMessages([...prev, draft])`.
+
+## Common pitfalls
+- Calling `addOptimistic` after the `await` — the UI won't update instantly.
+- Forgetting to wrap in a `startTransition` — optimistic updates must happen in a transition.
+
+## Stretch
+Show a subtle "sending…" opacity on the optimistic message until the real one
+arrives.
