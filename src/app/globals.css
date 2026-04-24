@@ -126,6 +126,34 @@ body {
   display: inline-block;
 }
 
+/* Sandpack ships a default height on `.sp-wrapper` / `.sp-layout` / `.sp-stack`
+   (~350px). Force them to fill their parent so the editor + preview use the
+   full lesson pane height. */
+.sp-wrapper,
+.sp-layout {
+  height: 100% !important;
+  min-height: 0 !important;
+}
+.sp-layout > .sp-stack {
+  height: 100% !important;
+  min-height: 0 !important;
+}
+.sp-preview,
+.sp-preview-container {
+  height: 100% !important;
+  min-height: 0 !important;
+}
+.sp-preview-iframe {
+  height: 100% !important;
+  width: 100% !important;
+  flex: 1 1 0% !important;
+}
+.sp-code-editor,
+.sp-cm {
+  height: 100% !important;
+  min-height: 0 !important;
+}
+
 /* Sandpack: give the file explorer a reasonable desktop width with a visible
    border, and hide it on small screens (the editor's own file tabs are
    enough when horizontal space is tight). */
@@ -133,6 +161,7 @@ body {
   min-width: 180px !important;
   max-width: 220px !important;
   border-right: 1px solid rgb(63 63 70) !important;
+  height: 100% !important;
 }
 
 /* Sandpack ships a horizontal flex for its editor+preview. Below 640px the

@@ -125,7 +125,10 @@ export function SandpackEditor({
           }}
           theme="dark"
         >
-          <SandpackLayout className="!h-full !rounded-none !border-0">
+          <SandpackLayout
+            className="!h-full !rounded-none !border-0"
+            style={{ height: "100%" }}
+          >
             <SandpackFileExplorer
               autoHiddenFiles
               className="sp-file-explorer-custom"
