@@ -1,0 +1,28 @@
+/* Kill RevealJS default theme so our design has a clean surface */
+:root {
+  --r-background-color: #05050b;
+  --r-main-font: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  --r-main-color: #e9e9ef;
+  --r-heading-font: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  --r-heading-color: #ffffff;
+  --r-link-color: #a78bfa;
+  --r-selection-color: #0b0b14;
+  --r-selection-background-color: #c4b5fd;
+}
+
+.reveal { font-family: var(--r-main-font); color: var(--r-main-color); font-weight: 400; }
+.reveal .slides { text-align: left; }
+.reveal .slides section, .reveal .slides section > section { padding: 0; }
+.reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+  font-family: var(--r-heading-font);
+  color: var(--r-heading-color);
+  text-transform: none;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+.reveal p { margin: 0; }
+.reveal ul, .reveal ol { margin: 0; padding: 0; list-style: none; }
+.reveal a { color: var(--r-link-color); text-decoration: none; }
+.reveal .controls { color: rgba(255,255,255,0.4); }
+.reveal .progress { height: 3px; color: #a78bfa; }
+.reveal .slide-number { color: rgba(255,255,255,0.35); font-family: 'JetBrains Mono', monospace; font-size: 12px; background: transparent; }
