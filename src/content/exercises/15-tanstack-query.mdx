@@ -1,0 +1,38 @@
+---
+id: ex-15
+slug: tanstack-query
+tier: intermediate
+order: 15
+tierOrder: 5
+title: TanStack Query Basics
+objective: Fetch, cache, and invalidate server state with useQuery.
+estMinutes: 20
+hints:
+  - "Wrap your app in `<QueryClientProvider>`."
+  - "`useQuery({ queryKey: ['todos'], queryFn })` gives you `{ data, isLoading, error }`."
+  - "This sandbox demonstrates the lifecycle with a local fake fetcher instead of installing the library."
+starterPath: tanstack-query/starter
+solutionPath: tanstack-query/solution
+sandpackTemplate: react19-vite
+tags: [tanstack-query, data-fetching, cache]
+xp: 100
+---
+
+## Goal
+Fetch a list from a fake API with caching, loading states, and manual refetch.
+
+## Concepts
+TanStack Query manages server state the way Redux used to manage client state.
+It owns caching, revalidation, deduping, and retries. The useQuery return shape
+(`data/isLoading/error/refetch`) maps one-to-one to the UI you need.
+
+## Steps
+1. Create a fake `fetchTodos()` that resolves after 500ms.
+2. Build a `useFakeQuery(key, fetcher)` that caches per-key and tracks loading/error.
+3. Render a list and a refetch button.
+
+## Common pitfalls
+- Putting server state in `useState` — it goes stale and doesn't dedupe.
+
+## Stretch
+Add `staleTime` so repeated mounts return the cached value without re-fetching.

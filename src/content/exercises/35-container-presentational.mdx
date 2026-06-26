@@ -1,0 +1,42 @@
+---
+id: ex-35
+slug: container-presentational
+tier: intermediate
+order: 35
+tierOrder: 11
+title: Container & Presentational Split
+objective: Separate data fetching from rendering across two files.
+estMinutes: 15
+hints:
+  - "The container owns state, fetching, and event handlers. The presentational component is pure props in → JSX out."
+  - "Presentational components are easy to snapshot-test and reuse with mocked data."
+  - "The container should not contain JSX layout details — that lives in the presentational component."
+starterPath: container-presentational/starter
+solutionPath: container-presentational/solution
+sandpackTemplate: react19-vite
+tags: [patterns, separation-of-concerns]
+xp: 100
+---
+
+## Goal
+Split a "users dashboard" into a `UsersContainer` (fetches + state) and a
+`UsersList` (pure render).
+
+## Concepts
+The container/presentational split is older than hooks but still useful when a
+component owns side effects. Tests of the presentational half can run with
+zero mocks, just static props.
+
+## Steps
+1. `types.ts` exports `User`.
+2. `UsersList.tsx` accepts `{ users, onSelect }` props and renders the list.
+3. `UsersContainer.tsx` simulates a fetch, stores selection state, and renders
+   `<UsersList>` with handlers wired up.
+
+## Common pitfalls
+- Letting the presentational component grow side effects ("just one fetch") —
+  the boundary breaks fast.
+
+## Stretch
+Add a `<UsersList />` story in `users-list.story.tsx` showing the component
+with mocked data, with no container at all.

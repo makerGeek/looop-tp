@@ -1,0 +1,22 @@
+{
+  "all": true,
+  "include": [
+    "src/app/**/*.{ts,tsx}",
+    "src/components/**/*.{ts,tsx}",
+    "src/hooks/**/*.{ts,tsx}",
+    "src/lib/**/*.{ts,tsx}",
+    "src/stores/**/*.{ts,tsx}"
+  ],
+  "exclude": [
+    "**/*.test.*",
+    "**/*.spec.*",
+    "src/sandpack/starters/**",
+    "src/content/**",
+    "**/*.d.ts",
+    "next.config.*",
+    "next-env.d.ts"
+  ],
+  "extension": [".ts", ".tsx"],
+  "reporter": ["lcov", "text-summary", "html", "json-summary"],
+  "report-dir": "coverage"
+}

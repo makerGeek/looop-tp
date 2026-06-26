@@ -1,0 +1,42 @@
+---
+id: ex-34
+slug: provider-and-hook
+tier: intermediate
+order: 34
+tierOrder: 10
+title: Provider + Hook Pattern
+objective: Pair a Context provider with a typed consumer hook across multiple files.
+estMinutes: 18
+hints:
+  - "Define the context in `AuthContext.ts`, the provider in `AuthProvider.tsx`, the hook in `useAuth.ts`."
+  - "The hook throws if used outside the provider — fail loudly, not silently."
+  - "Consumers only ever import the hook, never the context object directly."
+starterPath: provider-and-hook/starter
+solutionPath: provider-and-hook/solution
+sandpackTemplate: react19-vite
+tags: [context, providers, hooks, architecture]
+xp: 100
+---
+
+## Goal
+Build the `AuthContext` + `AuthProvider` + `useAuth` triad, then consume it
+from a `LoginPanel` and `Greeting` in different files.
+
+## Concepts
+The provider/hook pattern hides context wiring from callers. They get a typed
+hook that returns `{ user, login, logout }` and never need to think about the
+context object. The hook also enforces "use inside the provider" via a runtime
+guard.
+
+## Steps
+1. `AuthContext.ts` — `createContext<AuthValue | null>(null)`.
+2. `AuthProvider.tsx` — renders `<AuthContext.Provider value={...}>` with login/logout.
+3. `useAuth.ts` — `use(AuthContext)` and throw if `null`.
+4. `App.tsx` — wraps the tree in `<AuthProvider>` and renders `<Greeting />` + `<LoginPanel />`.
+
+## Common pitfalls
+- Returning a default value from the context — masks "forgot to wrap in provider" bugs.
+
+## Stretch
+Add a `useUser()` selector hook that returns just `user` so components don't
+re-render when login/logout functions change.

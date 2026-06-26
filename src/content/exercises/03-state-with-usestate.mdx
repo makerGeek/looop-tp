@@ -1,0 +1,40 @@
+---
+id: ex-03
+slug: state-with-usestate
+tier: beginner
+order: 3
+tierOrder: 3
+title: State with useState
+objective: Manage local state and update it immutably.
+estMinutes: 10
+hints:
+  - "Call `useState(0)` and destructure `[count, setCount]`."
+  - "Prefer the updater form `setCount(c => c + 1)` when next state depends on previous."
+  - "Never mutate state directly — always create a new value."
+starterPath: state-with-usestate/starter
+solutionPath: state-with-usestate/solution
+sandpackTemplate: react19-vite
+tags: [useState, hooks]
+xp: 50
+---
+
+## Goal
+Build a counter with increment, decrement, and reset buttons.
+
+## Concepts
+`useState` returns `[value, setter]`. React re-renders whenever the setter is
+called with a new reference. Updates are queued and batched — use the updater
+function to guarantee correct sequencing when state depends on the previous value.
+
+## Steps
+1. Import `useState` from `react`.
+2. Create `[count, setCount]` initialized to `0`.
+3. Wire three buttons: `+`, `-`, and `reset`.
+4. Display the count in a big heading.
+
+## Common pitfalls
+- Mutating the value (`count++`) — React only notices new values.
+- Calling `setCount` in a render without a handler — that causes an infinite loop.
+
+## Stretch
+Add a `step: number` state that controls how much `+`/`-` change at a time.

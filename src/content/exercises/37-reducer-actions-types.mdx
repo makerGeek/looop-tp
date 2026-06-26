@@ -1,0 +1,42 @@
+---
+id: ex-37
+slug: reducer-actions-types
+tier: advanced
+order: 37
+tierOrder: 8
+title: Reducer + Actions + Types Architecture
+objective: Split a non-trivial reducer across reducer.ts, actions.ts, and types.ts.
+estMinutes: 20
+hints:
+  - "`types.ts` defines the State shape and the discriminated Action union."
+  - "`actions.ts` exports tiny action creators returning typed Action objects."
+  - "`reducer.ts` imports both and stays a pure switch statement."
+starterPath: reducer-actions-types/starter
+solutionPath: reducer-actions-types/solution
+sandpackTemplate: react19-vite
+tags: [useReducer, architecture, state-machine]
+xp: 175
+---
+
+## Goal
+Build a small "shopping cart" state machine split across files: `types.ts`,
+`actions.ts`, `reducer.ts`, and a `CartView.tsx` consumer.
+
+## Concepts
+At scale, reducers become unreadable when state, actions, and logic live in one
+file. The triad pattern (types/actions/reducer) keeps each file focused. Action
+creators give consumers a typed API instead of raw `dispatch({type: '...'})`
+calls scattered around.
+
+## Steps
+1. `types.ts` — `CartState` + `Action = AddItem | RemoveItem | Clear`.
+2. `actions.ts` — `addItem(item)`, `removeItem(id)`, `clear()` returning typed objects.
+3. `reducer.ts` — pure `cartReducer(state, action)` switching on `action.type`.
+4. `CartView.tsx` — `useReducer(cartReducer, initial)` + dispatch calls via action creators.
+
+## Common pitfalls
+- Inlining business logic in components — it belongs in the reducer.
+- Calling `dispatch({type: ...})` directly — defeats the action creators.
+
+## Stretch
+Add a `selectors.ts` exporting `getTotal(state)` and use it in `CartView`.

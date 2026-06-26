@@ -1,0 +1,38 @@
+---
+id: ex-13
+slug: context-and-use
+tier: intermediate
+order: 13
+tierOrder: 3
+title: Context + use()
+objective: Read context with the new use() hook and avoid provider prop drilling.
+estMinutes: 12
+hints:
+  - "`createContext(defaultValue)` creates a `Context` object with a `.Provider`."
+  - "React 19: call `use(MyContext)` instead of `useContext(MyContext)` — it's the same read, new name."
+  - "`use()` can also be called conditionally, unlike `useContext`."
+starterPath: context-and-use/starter
+solutionPath: context-and-use/solution
+sandpackTemplate: react19-vite
+tags: [context, use, react-19]
+xp: 100
+---
+
+## Goal
+Share a theme value through context and read it deep in the tree with `use()`.
+
+## Concepts
+`useContext` still works in React 19, but `use()` is the successor — it unifies
+the API for reading contexts and awaiting promises. It's valid inside
+conditionals and loops.
+
+## Steps
+1. Create `const ThemeContext = createContext<'light' | 'dark'>('light')`.
+2. Wrap the app in `<ThemeContext.Provider value="dark">`.
+3. Read it deep down with `const theme = use(ThemeContext)`.
+
+## Common pitfalls
+- Passing new object literals as `value` every render — memoize them if identity matters.
+
+## Stretch
+Also expose a `setTheme` function by putting `{ theme, setTheme }` in the context value.

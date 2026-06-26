@@ -1,0 +1,195 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, "Cascadia Code",
+    "JetBrains Mono", monospace;
+
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --color-tier-beginner: hsl(var(--tier-beginner));
+  --color-tier-intermediate: hsl(var(--tier-intermediate));
+  --color-tier-advanced: hsl(var(--tier-advanced));
+  --color-tier-expert: hsl(var(--tier-expert));
+  --color-tier-auxiliary: hsl(var(--tier-auxiliary));
+
+  --radius: 0.625rem;
+}
+
+:root {
+  --background: 0 0% 100%;
+  --foreground: 222.2 47.4% 11.2%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 47.4% 11.2%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 47.4% 11.2%;
+  --primary: 221.2 83.2% 53.3%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 210 40% 96.1%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 221.2 83.2% 53.3%;
+
+  --tier-beginner: 152 76% 44%;
+  --tier-intermediate: 199 89% 48%;
+  --tier-advanced: 262 83% 58%;
+  --tier-expert: 36 96% 52%;
+  --tier-auxiliary: 340 82% 60%;
+}
+
+.dark {
+  --background: 222.2 47.4% 6%;
+  --foreground: 210 40% 98%;
+  --card: 222.2 47.4% 8%;
+  --card-foreground: 210 40% 98%;
+  --popover: 222.2 47.4% 8%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 217.2 91.2% 59.8%;
+  --primary-foreground: 222.2 47.4% 11.2%;
+  --secondary: 217.2 32.6% 17.5%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 65.1%;
+  --accent: 217.2 32.6% 17.5%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 62.8% 50.6%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 217.2 32.6% 17.5%;
+  --input: 217.2 32.6% 17.5%;
+  --ring: 224.3 76.3% 48%;
+
+  --tier-beginner: 152 60% 50%;
+  --tier-intermediate: 199 80% 60%;
+  --tier-advanced: 262 75% 68%;
+  --tier-expert: 36 92% 60%;
+  --tier-auxiliary: 340 75% 68%;
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+html,
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.tier-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  display: inline-block;
+}
+
+/* Sandpack ships a default height on `.sp-wrapper` / `.sp-layout` / `.sp-stack`
+   (~350px). Force them to fill their parent so the editor + preview use the
+   full lesson pane height. */
+.sp-wrapper,
+.sp-layout {
+  height: 100% !important;
+  min-height: 0 !important;
+}
+.sp-layout > .sp-stack {
+  height: 100% !important;
+  min-height: 0 !important;
+}
+.sp-preview,
+.sp-preview-container {
+  height: 100% !important;
+  min-height: 0 !important;
+}
+.sp-preview-iframe {
+  height: 100% !important;
+  width: 100% !important;
+  flex: 1 1 0% !important;
+}
+.sp-code-editor,
+.sp-cm {
+  height: 100% !important;
+  min-height: 0 !important;
+}
+
+/* Sandpack: give the file explorer a reasonable desktop width with a visible
+   border, and hide it on small screens (the editor's own file tabs are
+   enough when horizontal space is tight). */
+.sp-file-explorer-custom {
+  min-width: 180px !important;
+  max-width: 220px !important;
+  border-right: 1px solid rgb(63 63 70) !important;
+  height: 100% !important;
+}
+
+/* Sandpack ships a horizontal flex for its editor+preview. Below 640px the
+   two panes are unreadable side-by-side, so stack them vertically and hide
+   the file explorer. Overrides key off Sandpack's stable class names. */
+@media (max-width: 639px) {
+  .sp-layout {
+    flex-direction: column !important;
+  }
+  .sp-layout > .sp-stack {
+    min-width: 100% !important;
+    flex: 1 1 auto !important;
+  }
+  .sp-code-editor {
+    min-width: 100% !important;
+  }
+  .sp-preview-container {
+    min-width: 100% !important;
+  }
+  .sp-file-explorer-custom {
+    /* Show at the top on mobile as a compact horizontal-scrollable rail
+       — give users a visual of the tree without eating editor height. */
+    display: block !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    max-height: 120px !important;
+    overflow: auto !important;
+    border-right: 0 !important;
+    border-bottom: 1px solid rgb(63 63 70) !important;
+  }
+}

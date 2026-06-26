@@ -1,0 +1,40 @@
+---
+id: ex-23
+slug: route-handlers
+tier: advanced
+order: 23
+tierOrder: 5
+title: Route Handlers & Caching in Next 15
+objective: Expose an API route with request-memoized caching.
+estMinutes: 18
+hints:
+  - "A `route.ts` file exports `GET`, `POST`, etc. functions that receive a `Request`."
+  - "Next 15 made fetches uncached-by-default; use `{ cache: 'force-cache' }` or `next: { revalidate }` opt-in."
+  - "Wrap repeated reads within a request in `cache()` to dedupe."
+starterPath: route-handlers/starter
+solutionPath: route-handlers/solution
+sandpackTemplate: readonly
+tags: [next, route-handlers, caching]
+xp: 175
+---
+
+## Goal
+Read a complete `route.ts` showing a typed JSON response, Zod-validated search
+params, and request-memoized DB reads.
+
+## Concepts
+Next 15 flipped fetch defaults: no cache unless you ask. This forces you to be
+explicit about what should be cached vs always fresh. `cache()` from React
+dedupes reads within a single server request.
+
+## Read-along
+1. `app/api/users/route.ts` — exports `GET` and `POST`.
+2. Validates `searchParams` with Zod.
+3. Uses `cache()` to dedupe `getUsers()` calls within the request.
+
+## Common pitfalls
+- Assuming your `fetch` is cached by default — in Next 15 it is not.
+- Mixing `cache` (deduping) with `unstable_cache` (full-route cache) — they're different tools.
+
+## Stretch
+Add a `DELETE` handler that reads the id from the path via dynamic segments.

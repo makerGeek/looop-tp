@@ -1,0 +1,39 @@
+---
+id: ex-06
+slug: conditional-rendering
+tier: beginner
+order: 6
+tierOrder: 6
+title: Conditional Rendering & Narrowing
+objective: Use discriminated unions to render variants safely.
+estMinutes: 12
+hints:
+  - "Model state as `{ status: 'idle' | 'loading' | 'error' | 'success', data?: ... }`."
+  - "Switch on `state.status` — TypeScript narrows the other fields."
+  - "Avoid nested ternaries; use early returns or a `switch` for readability."
+starterPath: conditional-rendering/starter
+solutionPath: conditional-rendering/solution
+sandpackTemplate: react19-vite
+tags: [typescript, narrowing, conditional]
+xp: 50
+---
+
+## Goal
+Render a fetch-status UI that shows a spinner, error, or the result based on a
+discriminated union state.
+
+## Concepts
+Discriminated unions let TypeScript prove which branch you're in. If your state
+is `{ status: 'loading' }`, the compiler refuses to let you access `data` until
+you check `status === 'success'`.
+
+## Steps
+1. Define `type Fetch<T> = { status: 'idle' } | { status: 'loading' } | { status: 'error'; error: string } | { status: 'success'; data: T }`.
+2. Add buttons to simulate each state.
+3. Switch on `state.status` and render the appropriate UI.
+
+## Common pitfalls
+- Using optional fields instead of a discriminated union — you lose type safety.
+
+## Stretch
+Add a `retry` button that only appears in the `error` state.

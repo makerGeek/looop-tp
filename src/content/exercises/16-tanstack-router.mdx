@@ -1,0 +1,37 @@
+---
+id: ex-16
+slug: tanstack-router
+tier: intermediate
+order: 16
+tierOrder: 6
+title: TanStack Router Typed Routes
+objective: Define file-based typed routes with search-param validation.
+estMinutes: 20
+hints:
+  - "TanStack Router validates search params per-route with Zod or TypeScript narrowing."
+  - "Each route declares its `search` shape; calls to `navigate({ search })` are type-checked."
+  - "In this sandbox we simulate the pattern with a tiny typed router."
+starterPath: tanstack-router/starter
+solutionPath: tanstack-router/solution
+sandpackTemplate: react19-vite
+tags: [tanstack-router, routing, typescript]
+xp: 100
+---
+
+## Goal
+Build a mini typed router: two "pages" and validated search params.
+
+## Concepts
+TanStack Router treats the URL as typed state. You declare each route's
+`search` shape and get autocomplete + compile errors when constructing links.
+
+## Steps
+1. Represent `route = 'home' | 'search'` in state.
+2. For `'search'`, require `{ q: string; page: number }`.
+3. Validate inputs when navigating — reject invalid shapes.
+
+## Common pitfalls
+- Parsing `URLSearchParams` into `any` and losing type safety.
+
+## Stretch
+Add a `'detail'` route with `{ id: string }` and a typed link helper.

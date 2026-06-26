@@ -1,0 +1,38 @@
+---
+id: ex-11
+slug: usereducer-complex-state
+tier: intermediate
+order: 11
+tierOrder: 1
+title: useReducer for Complex State
+objective: Model a small state machine with a typed reducer.
+estMinutes: 15
+hints:
+  - "Define `type Action = { type: 'increment' } | { type: 'decrement' } | { type: 'set'; payload: number }`."
+  - "A reducer is `(state, action) => newState` — always return a new object."
+  - "Call `useReducer(reducer, initialState)` to get `[state, dispatch]`."
+starterPath: usereducer-complex-state/starter
+solutionPath: usereducer-complex-state/solution
+sandpackTemplate: react19-vite
+tags: [useReducer, state-machine]
+xp: 100
+---
+
+## Goal
+Build a counter with `useReducer` — actions: `increment`, `decrement`, `set`, `reset`.
+
+## Concepts
+`useReducer` shines when state is complex or next state depends on multiple
+branches. Actions make intent explicit and easy to log/replay.
+
+## Steps
+1. Define `Action` as a discriminated union.
+2. Write `reducer(state, action)` returning a new state per `action.type`.
+3. Wire buttons to `dispatch({ type: '...' })`.
+
+## Common pitfalls
+- Mutating state inside the reducer.
+- Forgetting the `default` branch — TypeScript's exhaustive check catches this.
+
+## Stretch
+Add an `undo` action that restores the previous state (keep a history array).

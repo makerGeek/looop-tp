@@ -1,0 +1,39 @@
+---
+id: ex-07
+slug: useeffect-essentials
+tier: beginner
+order: 7
+tierOrder: 7
+title: useEffect Essentials
+objective: Synchronize with external systems and clean up correctly.
+estMinutes: 15
+hints:
+  - "`useEffect(() => { ... }, [deps])` runs after render when `deps` change."
+  - "Return a cleanup function to cancel timers or unsubscribe listeners."
+  - "Put every value read in the effect into the dependency array."
+starterPath: useeffect-essentials/starter
+solutionPath: useeffect-essentials/solution
+sandpackTemplate: react19-vite
+tags: [useEffect, hooks, sync]
+xp: 50
+---
+
+## Goal
+Build a live clock that ticks every second, and cleans up its interval on unmount.
+
+## Concepts
+`useEffect` synchronizes React state with the outside world (timers, subscriptions,
+direct DOM calls). The cleanup function runs before the next effect and on unmount.
+
+## Steps
+1. Store a `Date` in state, initialized with `new Date()`.
+2. In a `useEffect`, call `setInterval(() => setNow(new Date()), 1000)`.
+3. Return `() => clearInterval(id)` from the effect.
+4. Display `now.toLocaleTimeString()`.
+
+## Common pitfalls
+- Forgetting the cleanup — you'll leak timers every remount.
+- Missing deps warning — if you read a prop inside, list it in the array.
+
+## Stretch
+Add a pause button that stops the interval via state.

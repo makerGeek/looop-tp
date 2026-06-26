@@ -1,0 +1,40 @@
+---
+id: ex-01
+slug: jsx-and-components
+tier: beginner
+order: 1
+tierOrder: 1
+title: JSX & Components
+objective: Write a typed function component that renders structured markup.
+estMinutes: 10
+hints:
+  - "A function component is just a function whose name starts with a capital letter and returns JSX."
+  - "Use a fragment `<>...</>` or a single wrapping element to return multiple children."
+  - "Give props a TypeScript interface, like `interface Props { name: string }`."
+starterPath: jsx-and-components/starter
+solutionPath: jsx-and-components/solution
+sandpackTemplate: react19-vite
+tags: [jsx, components, typescript]
+xp: 50
+---
+
+## Goal
+Render a small greeting card component that takes a `name` prop and shows it
+inside an `<h2>`.
+
+## Concepts
+In React 19, components are still just functions. JSX looks like HTML but is
+really `React.createElement` under the hood — which is why attribute names use
+camelCase (`className`, `onClick`) and why you need a single root (or a fragment).
+
+## Steps
+1. Define a `Greeting` component that accepts a `name: string` prop.
+2. Return a `<section>` containing an `<h2>` that says `Hello, {name}!`.
+3. Render `<Greeting name="Dana" />` from `App`.
+
+## Common pitfalls
+- Using `class=` instead of `className=`.
+- Forgetting the capital letter — lowercase components are treated as HTML tags.
+
+## Stretch
+Add a second prop `emoji?: string` that renders before the name when provided.

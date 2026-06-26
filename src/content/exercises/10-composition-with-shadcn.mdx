@@ -1,0 +1,39 @@
+---
+id: ex-10
+slug: composition-with-shadcn
+tier: beginner
+order: 10
+tierOrder: 10
+title: Composition with shadcn/ui
+objective: Assemble a Card + Button + Dialog feature.
+estMinutes: 15
+hints:
+  - "shadcn/ui copies components into your repo — you own them and can edit them."
+  - "Compose primitives: `<Card>` wraps `<Dialog>`, which wraps the interactive button."
+  - "Here we approximate the primitives inline so the sandbox runs without extra deps."
+starterPath: composition-with-shadcn/starter
+solutionPath: composition-with-shadcn/solution
+sandpackTemplate: react19-vite
+tags: [shadcn, composition, ui]
+xp: 50
+---
+
+## Goal
+Build a settings card that opens a confirmation dialog when the user clicks
+"Delete account".
+
+## Concepts
+shadcn/ui is a pattern, not a library — you copy primitives into your repo and
+compose them. For this sandbox we use inline minimal primitives to show the
+composition model without needing to install Radix.
+
+## Steps
+1. Create a `Card` with header, body, and a `Delete` button.
+2. When clicked, open a `Dialog` asking for confirmation.
+3. The dialog has `Cancel` and `Confirm` actions.
+
+## Common pitfalls
+- Putting everything in one component — composition makes swapping parts trivial.
+
+## Stretch
+Add an `onConfirm` prop to the dialog so the caller decides what to do.

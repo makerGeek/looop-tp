@@ -1,0 +1,39 @@
+---
+id: ex-09
+slug: styling-with-tailwind
+tier: beginner
+order: 9
+tierOrder: 9
+title: Styling with Tailwind v4
+objective: Apply utility classes and extract component variants.
+estMinutes: 12
+hints:
+  - "Tailwind v4 uses CSS-first config via the `@theme` directive — no more `tailwind.config.js`."
+  - "Compose utilities directly: `className=\"rounded-md bg-blue-600 px-3 py-1.5 text-white\"`."
+  - "For reusable variants, pull out a helper with `class-variance-authority` or a simple `clsx` call."
+starterPath: styling-with-tailwind/starter
+solutionPath: styling-with-tailwind/solution
+sandpackTemplate: react19-vite
+tags: [tailwind, styling, css]
+xp: 50
+---
+
+## Goal
+Style a Button that has `primary | secondary | ghost` variants and a hover state.
+
+## Concepts
+Tailwind v4 ships a full utility set and uses modern CSS (`@layer`, `:has()`,
+custom properties). Use `data-variant` + selectors, or inline utilities, or a
+`variants` record. This exercise uses the record pattern because it scales.
+
+## Steps
+1. Build a `Button` component that accepts `variant: 'primary' | 'secondary' | 'ghost'`.
+2. Map each variant to a utility string.
+3. Add a `hover:` color change per variant.
+4. Render one of each in `App`.
+
+## Common pitfalls
+- Forgetting to purge unused classes — Tailwind v4's Oxide engine handles this automatically in production.
+
+## Stretch
+Add a `disabled` state using `disabled:opacity-50 disabled:cursor-not-allowed`.

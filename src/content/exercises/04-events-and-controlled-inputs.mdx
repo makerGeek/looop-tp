@@ -1,0 +1,40 @@
+---
+id: ex-04
+slug: events-and-controlled-inputs
+tier: beginner
+order: 4
+tierOrder: 4
+title: Events & Controlled Inputs
+objective: Bind inputs to state with proper TypeScript event types.
+estMinutes: 12
+hints:
+  - "A controlled input sets both `value={state}` and `onChange={...}`."
+  - "The change event is typed `React.ChangeEvent<HTMLInputElement>` — use `e.target.value`."
+  - "For textareas, use `HTMLTextAreaElement`."
+starterPath: events-and-controlled-inputs/starter
+solutionPath: events-and-controlled-inputs/solution
+sandpackTemplate: react19-vite
+tags: [events, controlled, forms]
+xp: 50
+---
+
+## Goal
+Build a two-field form (name + message) that echoes the current values as you
+type and lets you clear them.
+
+## Concepts
+Controlled components keep the DOM value in sync with React state. The source
+of truth is React, which makes validation, formatting, and submission trivial.
+
+## Steps
+1. Add `useState<string>` for both `name` and `message`.
+2. Wire `value` + `onChange` on an `<input>` and a `<textarea>`.
+3. Render a preview `<pre>` showing the current values.
+4. Add a Clear button that resets both to empty strings.
+
+## Common pitfalls
+- Using `defaultValue` instead of `value` — that makes the input uncontrolled.
+- Forgetting to call `e.target.value` and passing the event directly.
+
+## Stretch
+Disable the Clear button when both fields are already empty.

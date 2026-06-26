@@ -1,0 +1,39 @@
+---
+id: ex-08
+slug: useref-imperative-dom
+tier: beginner
+order: 8
+tierOrder: 8
+title: useRef & Imperative DOM
+objective: Focus an input and measure an element.
+estMinutes: 10
+hints:
+  - "`const ref = useRef<HTMLInputElement>(null)` then `<input ref={ref} />`."
+  - "Access the DOM node with `ref.current` inside event handlers."
+  - "Use `getBoundingClientRect()` to measure sizes on demand."
+starterPath: useref-imperative-dom/starter
+solutionPath: useref-imperative-dom/solution
+sandpackTemplate: react19-vite
+tags: [useRef, dom, imperative]
+xp: 50
+---
+
+## Goal
+Add a "focus input" button that imperatively calls `.focus()` on an input and a
+"measure box" button that reads the box's height.
+
+## Concepts
+Refs are escape hatches to the DOM. `useRef` returns a stable object whose
+`.current` is mutable without causing re-renders. In React 19, function
+components can accept a `ref` prop directly — no more `forwardRef` boilerplate.
+
+## Steps
+1. Create `inputRef` and attach it to the `<input>`.
+2. Create `boxRef` and attach it to a `<div>`.
+3. Wire two buttons: one calls `inputRef.current?.focus()`, the other reads `boxRef.current?.getBoundingClientRect()`.
+
+## Common pitfalls
+- Accessing `.current` during render — refs aren't populated until after mount.
+
+## Stretch
+Display the measured box dimensions next to the button.

@@ -1,0 +1,42 @@
+---
+id: ex-39
+slug: monorepo-imports
+tier: auxiliary
+order: 39
+tierOrder: 4
+title: Monorepo-Style Path Aliases
+objective: Mimic a monorepo layout with `@app`, `@ui`, `@lib` aliases via tsconfig paths.
+estMinutes: 18
+hints:
+  - "tsconfig `paths` lets you write `@ui/Button` instead of `../../../ui/Button`."
+  - "Folders aren't packages, but with aliases the import surface looks the same."
+  - "Real monorepos use pnpm workspaces or Turborepo to make folders into actual published packages."
+starterPath: monorepo-imports/starter
+solutionPath: monorepo-imports/solution
+sandpackTemplate: readonly
+tags: [monorepo, paths, organization]
+xp: 125
+---
+
+## Goal
+Lay out the project as if it were a tiny monorepo: `app/`, `ui/`, `lib/`,
+each importing from each other through path aliases instead of relative paths.
+
+## Concepts
+Even single-package projects benefit from the discipline of aliased imports.
+You can later promote any aliased folder into a real workspace package without
+rewriting any imports.
+
+## Steps
+1. `tsconfig.json` paths: `@app/*` → `./app/*`, `@ui/*` → `./ui/*`, `@lib/*` → `./lib/*`.
+2. `lib/format.ts` — small currency formatter.
+3. `ui/Money.tsx` — uses `@lib/format`.
+4. `app/Page.tsx` — uses `@ui/Money`.
+5. `App.tsx` renders `<Page />`.
+
+## Common pitfalls
+- Mixing `@ui` aliases with `../ui` relative imports — pick one and enforce it.
+- Forgetting to update bundler config to mirror tsconfig paths.
+
+## Stretch
+Add `lib/api.ts` with a fake fetch and consume it from `@app/Page`.
