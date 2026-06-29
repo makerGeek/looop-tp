@@ -1,13 +1,12 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { LayoutGrid, ListTodo, LogOut, FolderKanban } from "lucide-react";
+import { Inbox, LogOut, FolderKanban, Command } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useSession } from "@/hooks/use-session";
 import { cn } from "@/lib/cn";
 
 const links = [
-  { to: "/", label: "Dashboard", icon: LayoutGrid },
-  { to: "/projects", label: "Projects", icon: FolderKanban },
-  { to: "/tasks", label: "My tasks", icon: ListTodo },
+  { to: "/", label: "Inbox", icon: Inbox, end: true },
+  { to: "/p", label: "Projects", icon: FolderKanban, end: false },
 ];
 
 export function AppLayout() {
@@ -22,11 +21,11 @@ export function AppLayout() {
           PM App
         </div>
         <nav className="flex gap-1 overflow-x-auto px-2 pb-2 md:flex-col md:px-3">
-          {links.map(({ to, label, icon: Icon }) => (
+          {links.map(({ to, label, icon: Icon, end }) => (
             <NavLink
               key={to}
               to={to}
-              end={to === "/"}
+              end={end}
               className={({ isActive }) =>
                 cn(
                   "flex items-center gap-2 whitespace-nowrap rounded-md px-3 py-2 text-sm",
@@ -41,6 +40,12 @@ export function AppLayout() {
             </NavLink>
           ))}
         </nav>
+        <div className="hidden px-3 py-2 text-[11px] text-muted-foreground md:block">
+          <span className="inline-flex items-center gap-1 rounded border border-border px-1.5 py-0.5">
+            <Command className="h-3 w-3" />K
+          </span>{" "}
+          to open the command bar
+        </div>
         <div className="hidden border-t border-border p-3 text-xs text-muted-foreground md:block">
           <div className="truncate">{session?.user.email}</div>
           <button

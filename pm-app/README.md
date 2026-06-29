@@ -10,7 +10,23 @@ A pure-frontend project management app talking directly to Supabase
 - **React Router 7** (SPA routing)
 - **TanStack Query 5** (server-state cache)
 - **@supabase/supabase-js** (auth + DB + storage from the client)
+- **@dnd-kit/core** (drag-and-drop board)
+- **react-markdown + remark-gfm** (markdown rendering in tasks + comments)
 - **lucide-react** icons
+
+## Stage 1 — what's working
+
+- Email/password auth (Supabase Auth)
+- Auto-created personal workspace on first sign-in
+- Projects list + create
+- Project board with 5 fixed columns (Backlog / Up next / In progress /
+  In review / Done) and drag-and-drop reordering across columns
+- Task drawer: inline-editable title, motivation, markdown description,
+  comments thread, drag-and-drop file attachments to Supabase Storage
+  with inline previews (image / video / PDF / file)
+- Inbox at `/` showing tasks assigned to me, most recently changed first
+- Cmd-K (Ctrl-K) command bar: navigate, jump to projects, create task
+- `Esc` closes drawer + command bar
 
 ## Setup
 
@@ -25,7 +41,17 @@ pnpm dev
 
 App boots at `http://localhost:5173`.
 
-## Suggested Supabase schema (next step)
+## Supabase setup
+
+The schema lives in `supabase/migrations/0001_init.sql`. Apply it once
+via the Supabase SQL editor or `supabase db push`. It will:
+
+- Create the workspace / project / task / comment / attachment tables
+- Enable RLS scoped to workspace membership
+- Create the `attachments` storage bucket with matching policies
+- Set the `task_status` enum (5 fixed values, no custom workflows)
+
+## Original suggested schema (kept for reference)
 
 ```sql
 create table projects (
