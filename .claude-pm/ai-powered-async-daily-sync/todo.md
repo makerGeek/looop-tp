@@ -77,7 +77,7 @@
   without full reload. (covers AC 5.1, AC 5.2)
 - [x] B-D11. Build the `History` disclosure with collapsed / expanded /
   empty states and read-only past entries. (covers AC 4.1, AC 4.2)
-- [ ] B-D12. Add Cmd-K entries "Go to Daily sync" and "Submit today's
+- [x] B-D12. Add Cmd-K entries "Go to Daily sync" and "Submit today's
   standup" (the latter navigates to `/sync` and focuses the first
   textarea). (supports Story 1, Story 2 discoverability)
 - [ ] B-D13. Add sidebar "you haven't submitted today" dot indicator

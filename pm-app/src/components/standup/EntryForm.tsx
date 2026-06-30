@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Loader2, Pencil } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -28,6 +35,10 @@ export function EntryForm({ onSubmitted }: Props) {
   const { workspace } = useWorkspace();
   const userId = session?.user?.id ?? null;
   const workspaceId = workspace?.id ?? null;
+
+  const location = useLocation();
+  const navigate = useNavigate();
+  const yesterdayRef = useRef<HTMLTextAreaElement>(null);
 
   const localDate = useMemo(() => todayLocalDate(), []);
 
@@ -69,6 +80,22 @@ export function EntryForm({ onSubmitted }: Props) {
       cancelled = true;
     };
   }, [workspaceId, userId, localDate]);
+
+  // Cmd-K "Submit today's standup" navigates here with
+  // location.state.focusEntry === true. We honour the signal by focusing the
+  // Yesterday textarea when the form is editable, then clear the flag so a
+  // refresh doesn't refocus. We deliberately do NOT auto-flip from
+  // submitted/read-only into edit mode — the user can hit Edit themselves.
+  const focusEntry =
+    (location.state as { focusEntry?: boolean } | null)?.focusEntry === true;
+  useEffect(() => {
+    if (!focusEntry || loading) return;
+    if (yesterdayRef.current) {
+      yesterdayRef.current.focus();
+    }
+    // Clear the flag so refresh / back-navigation doesn't refocus.
+    navigate(location.pathname, { replace: true, state: {} });
+  }, [focusEntry, loading, navigate, location.pathname]);
 
   const canSubmit =
     !!workspaceId &&
@@ -177,6 +204,7 @@ export function EntryForm({ onSubmitted }: Props) {
       ) : (
         <div className="space-y-4">
           <Field
+            ref={yesterdayRef}
             label="Yesterday"
             value={yesterday}
             onChange={setYesterday}
@@ -242,6 +270,7 @@ export function EntryForm({ onSubmitted }: Props) {
 }
 
 function Field({
+  ref,
   label,
   value,
   onChange,
@@ -249,6 +278,7 @@ function Field({
   placeholder,
   disabled,
 }: {
+  ref?: React.Ref<HTMLTextAreaElement>;
   label: string;
   value: string;
   onChange: (v: string) => void;
@@ -262,6 +292,7 @@ function Field({
         {label}
       </span>
       <textarea
+        ref={ref}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={onKeyDown}

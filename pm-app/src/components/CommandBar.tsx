@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { LayoutGrid, Inbox, FolderKanban, Plus } from "lucide-react";
+import {
+  LayoutGrid,
+  Inbox,
+  FolderKanban,
+  Plus,
+  Sunrise,
+  PenSquare,
+} from "lucide-react";
 import { listProjects } from "@/lib/queries/projects";
 import type { Project } from "@/lib/types";
 import { cn } from "@/lib/cn";
@@ -59,6 +66,19 @@ export function CommandBar({
         hint: "/p",
         icon: FolderKanban,
         run: () => navigate("/p"),
+      },
+      {
+        id: "go:sync",
+        label: "Go to Daily sync",
+        hint: "/sync",
+        icon: Sunrise,
+        run: () => navigate("/sync"),
+      },
+      {
+        id: "submit:standup",
+        label: "Submit today's standup",
+        icon: PenSquare,
+        run: () => navigate("/sync", { state: { focusEntry: true } }),
       },
       {
         id: "create:task",

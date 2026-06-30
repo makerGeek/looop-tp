@@ -66,5 +66,14 @@ A `<details>` element would handle open/close on its own, but it would also fire
 ### 2026-06-30 — Developer — EntryHistory filters today + yesterday client-side rather than altering `listMyHistory`
 The build brief offered either approach. `listMyHistory`'s signature is shared (CoverageStrip-adjacent code could grow to use it later), and the dataset is tiny per user — filtering two dates client-side is essentially free and keeps the query layer dumb. If history grows enough to matter, the right fix is server-side pagination on `listMyHistory`, not a date-cutoff parameter.
 
+### 2026-06-30 — Developer — Cmd-K "Submit today's standup" focuses the Yesterday textarea but does NOT switch a submitted entry back into edit mode
+The brief was explicit: be humble about intent. If the user already submitted today, opening Cmd-K → "Submit today's standup" still navigates to `/sync` and the focus signal is delivered, but the read-only view stays read-only — the Yesterday textarea isn't mounted, so the focus effect is a silent no-op. The user can tap Edit themselves. Auto-flipping would override a deliberate read-only state and risk clobbering a saved entry with stale ref values.
+
+### 2026-06-30 — Developer — Focus signal lives in `location.state.focusEntry`, cleared via `navigate(pathname, { replace: true, state: {} })` after consumption
+Picked location.state over a query param (`?focus=entry`) for two reasons: it doesn't leave a stray URL in the bar, and it's naturally one-shot (no need to imperatively strip the param). The clear step is necessary too — without it, a browser refresh would refocus and steal the cursor from wherever the user moved it. Using `replace: true` keeps the back button sane.
+
+### 2026-06-30 — Developer — Pass ref as a regular prop to the inner `Field` component instead of `React.forwardRef`
+React 19 supports `ref` as an ordinary prop on function components, and `Field` is a tiny private helper inside `EntryForm` — wrapping it in `forwardRef` would add ceremony for no callsite benefit. The prop is typed as optional `React.Ref<HTMLTextAreaElement>` so non-Yesterday Fields don't need to thread anything.
+
 ### 2026-06-30 — Developer — Coverage avatar initials derived from `user_id.slice(0, 8)` for non-self members; email for the signed-in user
 We don't yet have a `profile` table, and `auth.users.email` is only readable for the calling user (RLS). The build brief explicitly accepts user_id-based initials as the v1 fallback. The signed-in user gets the nicer email-based label so they can spot themselves in the strip without confusion; everyone else gets a stable two-char initial derived from their id. When a profile table lands, the row builder is the only place to change.
