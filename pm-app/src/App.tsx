@@ -15,6 +15,7 @@ import { SignIn } from "@/pages/SignIn";
 import { Inbox } from "@/pages/Inbox";
 import { Projects } from "@/pages/Projects";
 import { ProjectDetail } from "@/pages/ProjectDetail";
+import { DailySync } from "@/pages/DailySync";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { useShortcuts } from "@/hooks/use-shortcuts";
 import type { Project } from "@/lib/types";
@@ -37,6 +38,7 @@ export function App() {
                 <Route index element={<InboxRoute />} />
                 <Route path="p" element={<Projects />} />
                 <Route path="p/:slug" element={<ProjectDetailRoute />} />
+                <Route path="sync" element={<DailySync />} />
               </Route>
             </Route>
           </Route>

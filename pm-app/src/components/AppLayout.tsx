@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { Inbox, LogOut, FolderKanban, Command } from "lucide-react";
+import { Inbox, LogOut, FolderKanban, Command, Sunrise } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useSession } from "@/hooks/use-session";
 import { cn } from "@/lib/cn";
@@ -7,6 +7,7 @@ import { cn } from "@/lib/cn";
 const links = [
   { to: "/", label: "Inbox", icon: Inbox, end: true },
   { to: "/p", label: "Projects", icon: FolderKanban, end: false },
+  { to: "/sync", label: "Daily sync", icon: Sunrise, end: true },
 ];
 
 export function AppLayout() {

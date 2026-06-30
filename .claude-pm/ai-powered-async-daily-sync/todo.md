@@ -50,9 +50,9 @@
 
 ### Designer-added UI build items
 
-- [ ] B-D1. Add `Daily sync` sidebar nav entry (with `Sunrise` icon) and
+- [x] B-D1. Add `Daily sync` sidebar nav entry (with `Sunrise` icon) and
   the `/sync` route to `AppLayout` + `App.tsx` router. (covers AC 1.1, AC 1.4)
-- [ ] B-D2. Build the `DailySync` page shell — two-column desktop, single
+- [x] B-D2. Build the `DailySync` page shell — two-column desktop, single
   column < 640px, page H1 "Daily sync" + subtitle. (covers AC 1.1)
 - [ ] B-D3. Build the entry form component with the three labelled
   textareas (Yesterday / Today / Blockers), Submit disabled until ≥ 1
