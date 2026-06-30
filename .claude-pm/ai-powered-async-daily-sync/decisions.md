@@ -47,3 +47,9 @@ The brief's snippet used the same pattern and called out *why*: subtracting 86_4
 
 ### 2026-06-30 — Developer — `YesterdayEntry` renders nothing (not an empty placeholder) when there's no prior entry
 The brief was explicit ("If null, renders nothing"), but worth recording: a placeholder card would visually nag new users who joined yesterday with no entry, which contradicts the BA's reminders-non-goal. The component also soft-fails on query error rather than surfacing a banner — this surface is secondary and a fetch hiccup shouldn't draw the eye away from today's form.
+
+### 2026-06-30 — Developer — `DigestCard` collapses empty + initial-loaded-but-no-digest into one "empty" branch
+The brief's state list separated *loading-initial* (skeleton) and *empty* (no digest, no entries), but in practice the client can't cheaply distinguish "no entries today" from "entries exist but no one regenerated yet" without an extra `listTodayEntries` round-trip. The Edge Function already short-circuits with `{ empty: true, reason: 'no_entries' }` and never writes a digest row in that case, so a missing `daily_digest` row after the initial fetch is the right signal for the empty card. If a teammate submits later, the user re-opens the page or hits Regenerate from the entry-form side and the card fills in.
+
+### 2026-06-30 — Developer — Stale-hint compares only to the current user's own entry, not to all teammates' entries
+The brief is explicit ("the user's own entry's `updated_at` is more recent than the digest's `generated_at`"). A more general check would surface the hint whenever *any* teammate posted after the digest was generated, but (a) we don't have a cheap subscription to teammates' updates from this card alone, and (b) the user-facing copy ("Your latest entry isn't in the digest yet") only makes sense for the viewer's own entry. A "team has new entries" banner is a separate, future surface.

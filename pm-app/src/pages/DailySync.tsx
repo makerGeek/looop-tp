@@ -1,4 +1,5 @@
 import { Sunrise } from "lucide-react";
+import { DigestCard } from "@/components/standup/DigestCard";
 import { EntryForm } from "@/components/standup/EntryForm";
 import { YesterdayEntry } from "@/components/standup/YesterdayEntry";
 
@@ -21,9 +22,9 @@ export function DailySync() {
           <EntryForm />
           <YesterdayEntry />
         </div>
-        {/* TODO(B-D6..B-D10): digest card, coverage strip, stale hint, etc. */}
-        <div className="rounded-lg border border-dashed border-border bg-card/50 p-8 text-center text-sm text-muted-foreground">
-          Digest goes here
+        {/* B-D6..B-D9 wired here; B-D10 will add the coverage strip below. */}
+        <div>
+          <DigestCard />
         </div>
       </div>
 

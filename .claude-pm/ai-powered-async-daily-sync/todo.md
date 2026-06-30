@@ -63,14 +63,14 @@
   back to the editable form. (covers AC 2.1, AC 2.2)
 - [x] B-D5. Build the "yesterday's entry is read-only / fresh empty
   form for today" handling using user's local date. (covers AC 2.3)
-- [ ] B-D6. Build the team digest card: `AI-generated` chip (Sparkles
+- [x] B-D6. Build the team digest card: `AI-generated` chip (Sparkles
   icon, `bg-primary/15` pill), prose body (Markdown), meta line, and
   `Regenerate` button. (covers AC 3.1, AC 3.5, AC 6.3)
-- [ ] B-D7. Build the digest empty state ("No entries yet today…")
+- [x] B-D7. Build the digest empty state ("No entries yet today…")
   shown when no teammate has submitted. (covers AC 3.2)
-- [ ] B-D8. Build the digest loading / regenerating state — skeleton,
+- [x] B-D8. Build the digest loading / regenerating state — skeleton,
   spinner, dimmed previous digest behind. (covers AC 6.2)
-- [ ] B-D9. Build the digest stale-hint banner when the user's latest
+- [x] B-D9. Build the digest stale-hint banner when the user's latest
   entry post-dates the digest. (covers AC 6.1)
 - [ ] B-D10. Build the coverage strip — avatar list with submitted /
   not-submitted styling and accessible labels; updates after submit
