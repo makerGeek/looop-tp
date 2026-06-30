@@ -54,7 +54,7 @@
   the `/sync` route to `AppLayout` + `App.tsx` router. (covers AC 1.1, AC 1.4)
 - [x] B-D2. Build the `DailySync` page shell — two-column desktop, single
   column < 640px, page H1 "Daily sync" + subtitle. (covers AC 1.1)
-- [ ] B-D3. Build the entry form component with the three labelled
+- [x] B-D3. Build the entry form component with the three labelled
   textareas (Yesterday / Today / Blockers), Submit disabled until ≥ 1
   field is non-empty, Cmd+Enter submit, helper text. (covers AC 1.1,
   AC 1.2, AC 1.3)

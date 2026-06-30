@@ -32,3 +32,9 @@ If Anthropic fails (503), we still want the next retry paced by the same 30 s wi
 
 ### 2026-06-30 — Developer — Function returns 503 (not 500) on Anthropic failure, leaves prior digest untouched
 Matches AC 6.2 ("the previous digest remains until the new one replaces it") and the architect's error table. The upsert only runs after a successful AI response, so a Haiku outage cannot clobber a previously-good digest row.
+
+### 2026-06-30 — Developer — EntryForm pre-fills existing entry but stays editable in this slice
+B-D3's contract is the editable form; B-D4 owns the submitted/read-only swap. Pre-filling existing values on mount satisfies AC 2.1 from the form side and keeps the next slice purely additive — B-D4 can wrap this component with a state branch (or render `<Markdown>` next to it) without rewriting the inputs. Means a returning user today sees their words ready to edit and "Update" instead of "Submit" on the button.
+
+### 2026-06-30 — Developer — Cmd/Ctrl+Enter handler lives on each textarea, not on a form-level listener
+Three textareas, one handler reference shared between them; the per-element approach avoids a global `keydown` listener and naturally scopes the shortcut to "while typing inside the form". It also dodges React 19's stricter passive-listener defaults for synthetic form submits.
