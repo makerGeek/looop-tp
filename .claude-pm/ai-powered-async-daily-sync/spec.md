@@ -23,8 +23,8 @@ a Supabase Edge Function with prompt caching.
 - [x] Business Analyst
 - [x] Architect
 - [x] Designer
-- [ ] Developer
-- [ ] Tester
+- [x] Developer
+- [x] Tester
 
 ## Requirements (BA)
 
