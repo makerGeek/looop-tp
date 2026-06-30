@@ -10,11 +10,11 @@
 
 ### Architect-added backend / data build items
 
-- [ ] B-A1. Write migration `pm-app/supabase/migrations/0002_async_standup.sql`
+- [x] B-A1. Write migration `pm-app/supabase/migrations/0002_async_standup.sql`
   creating `async_standup` and `daily_digest` tables, the unique
   constraint on `(workspace_id, user_id, local_date)`, indexes, and the
   `updated_at` trigger. (covers AC 1.2, AC 2.2)
-- [ ] B-A2. Enable RLS on both new tables and add policies: members read
+- [x] B-A2. Enable RLS on both new tables and add policies: members read
   on `async_standup`, self-only insert/update/delete on `async_standup`,
   members read on `daily_digest` (no anon write policy). (covers AC 3.4,
   enforces "no editing other people's entries" non-goal)
