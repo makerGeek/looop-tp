@@ -51,6 +51,63 @@ via the Supabase SQL editor or `supabase db push`. It will:
 - Create the `attachments` storage bucket with matching policies
 - Set the `task_status` enum (5 fixed values, no custom workflows)
 
+## Edge Functions
+
+The `generate-digest` function (used by the Daily sync feature) lives at
+`pm-app/supabase/functions/generate-digest/` and runs on Supabase Edge
+Functions (Deno). It calls Claude Haiku via `@anthropic-ai/sdk` to
+summarise the day's standup entries.
+
+### One-time setup
+
+1. Install the Supabase CLI — see
+   [https://supabase.com/docs/guides/cli](https://supabase.com/docs/guides/cli).
+2. Link this repo to your Supabase project (run from the `pm-app/`
+   directory):
+
+   ```bash
+   supabase link --project-ref <your-project-ref>
+   ```
+
+   The project ref is the subdomain of your Supabase project URL
+   (`https://<ref>.supabase.co`).
+
+### Set the Anthropic secret
+
+The function needs an Anthropic API key. Set it as a Supabase secret so
+it's available at runtime:
+
+```bash
+supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
+```
+
+`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are auto-injected by the
+Edge runtime and don't need to be configured.
+
+### Deploy
+
+```bash
+supabase functions deploy generate-digest
+```
+
+### Local development
+
+Copy the env template and fill in your key:
+
+```bash
+cp pm-app/supabase/functions/.env.example pm-app/supabase/functions/.env
+# edit .env and paste your ANTHROPIC_API_KEY
+```
+
+Then serve the function locally:
+
+```bash
+supabase functions serve generate-digest --env-file pm-app/supabase/functions/.env
+```
+
+The function will be available at
+`http://localhost:54321/functions/v1/generate-digest`.
+
 ## Original suggested schema (kept for reference)
 
 ```sql

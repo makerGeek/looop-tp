@@ -43,7 +43,7 @@
 - [x] B-A9. Add a per-workspace 30 s rate-limit inside the Edge Function
   (in-memory token bucket); return 429 when triggered. (mitigates AI
   cost risk, supports AC 6.1 without enabling spam)
-- [ ] B-A10. Add `pm-app/supabase/functions/.env.example` documenting
+- [x] B-A10. Add `pm-app/supabase/functions/.env.example` documenting
   `ANTHROPIC_API_KEY` and update `pm-app/README.md` with an "Edge
   Functions" section explaining
   `supabase functions deploy generate-digest`. (deploy / ops)
