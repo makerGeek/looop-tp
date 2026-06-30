@@ -80,7 +80,7 @@
 - [x] B-D12. Add Cmd-K entries "Go to Daily sync" and "Submit today's
   standup" (the latter navigates to `/sync` and focuses the first
   textarea). (supports Story 1, Story 2 discoverability)
-- [ ] B-D13. Add sidebar "you haven't submitted today" dot indicator
+- [x] B-D13. Add sidebar "you haven't submitted today" dot indicator
   on the Daily sync nav item. (supports Story 1 discoverability)
 
 ## Verify

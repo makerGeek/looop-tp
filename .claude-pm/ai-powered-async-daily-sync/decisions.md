@@ -77,3 +77,12 @@ React 19 supports `ref` as an ordinary prop on function components, and `Field` 
 
 ### 2026-06-30 — Developer — Coverage avatar initials derived from `user_id.slice(0, 8)` for non-self members; email for the signed-in user
 We don't yet have a `profile` table, and `auth.users.email` is only readable for the calling user (RLS). The build brief explicitly accepts user_id-based initials as the v1 fallback. The signed-in user gets the nicer email-based label so they can spot themselves in the strip without confusion; everyone else gets a stable two-char initial derived from their id. When a profile table lands, the row builder is the only place to change.
+
+### 2026-06-30 — Developer — Sidebar dot uses Approach A (generic `indicator` prop on link spec), not a wrapping component
+AppLayout already iterates a `links[]` array; threading an optional `indicator?: boolean` (plus `indicatorSrLabel?` for a11y) through the spec keeps the rendering loop generic — if Projects or Inbox later want a dot, the wiring is a one-line addition. Tried a `<DailySyncNavBadge />` sibling, but it required hard-coding the daily sync link in JSX and broke the symmetry of the existing array loop.
+
+### 2026-06-30 — Developer — Dot indicator refreshes on window focus only — submit→hide on next page load is acceptable for v1
+The hook fetches once on mount and on window focus. After the user submits today's standup the sidebar still shows the dot until the next navigation or focus event — by which point a refetch runs and the dot disappears. A reactive subscription (Supabase realtime on `async_standup` for this user) would be the right v2 move, but at v1 scale the brief explicitly accepts the staleness ("Easiest: fetch once on mount, expose a `refresh()` function"). The hook does export `refresh()` so DailySync could call it on submit, but that requires DailySync to either consume the hook itself or get a callback prop — deferred to avoid adding coupling for a discoverability nicety.
+
+### 2026-06-30 — Developer — Weekend check via `new Date().getDay()` in host TZ, no `Intl` ceremony
+For the dot's weekend short-circuit, `getDay()` returns 0/6 in the host timezone — the same timezone `todayLocalDate()` uses for the date itself. Using `Intl.DateTimeFormat` to derive the weekday would be more explicit but identical in result; the simpler call keeps the hook lean. If the user's host TZ differs from their account TZ (rare), both the date key and the weekday agree, so they stay consistent.
