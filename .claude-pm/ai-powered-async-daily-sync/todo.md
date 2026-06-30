@@ -72,7 +72,7 @@
   spinner, dimmed previous digest behind. (covers AC 6.2)
 - [x] B-D9. Build the digest stale-hint banner when the user's latest
   entry post-dates the digest. (covers AC 6.1)
-- [ ] B-D10. Build the coverage strip — avatar list with submitted /
+- [x] B-D10. Build the coverage strip — avatar list with submitted /
   not-submitted styling and accessible labels; updates after submit
   without full reload. (covers AC 5.1, AC 5.2)
 - [ ] B-D11. Build the `History` disclosure with collapsed / expanded /

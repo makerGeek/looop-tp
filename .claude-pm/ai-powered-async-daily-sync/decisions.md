@@ -53,3 +53,12 @@ The brief's state list separated *loading-initial* (skeleton) and *empty* (no di
 
 ### 2026-06-30 — Developer — Stale-hint compares only to the current user's own entry, not to all teammates' entries
 The brief is explicit ("the user's own entry's `updated_at` is more recent than the digest's `generated_at`"). A more general check would surface the hint whenever *any* teammate posted after the digest was generated, but (a) we don't have a cheap subscription to teammates' updates from this card alone, and (b) the user-facing copy ("Your latest entry isn't in the digest yet") only makes sense for the viewer's own entry. A "team has new entries" banner is a separate, future surface.
+
+### 2026-06-30 — Developer — CoverageStrip lives above the two-column grid, not inside the digest card
+Designer's spec placed coverage under the digest prose, but the build brief asked for a top-of-page strip and decoupling has two upsides: it stays visible while reading the digest (no scroll churn), and the digest card stays solely about the AI artifact. The submission count subline on the digest card (e.g. "4 of 6 submitted") already carries the same info inline, so we're not duplicating UX state — just splitting "who" (strip) from "what" (digest body).
+
+### 2026-06-30 — Developer — CoverageStrip uses a `refreshKey: number` prop bumped by DailySync after EntryForm submits
+Considered an `onRefresh` callback or shared context, but the simplest design that satisfies AC 5.2 ("updates without a full page reload") is a numeric key that flips in the parent and re-runs the strip's `useEffect`. EntryForm already exposes an `onSubmitted(entry)` callback from B-D3, so DailySync just bumps the key in that handler. No new dep, no global state.
+
+### 2026-06-30 — Developer — Coverage avatar initials derived from `user_id.slice(0, 8)` for non-self members; email for the signed-in user
+We don't yet have a `profile` table, and `auth.users.email` is only readable for the calling user (RLS). The build brief explicitly accepts user_id-based initials as the v1 fallback. The signed-in user gets the nicer email-based label so they can spot themselves in the strip without confusion; everyone else gets a stable two-char initial derived from their id. When a profile table lands, the row builder is the only place to change.
