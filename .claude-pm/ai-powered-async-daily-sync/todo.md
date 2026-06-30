@@ -8,6 +8,46 @@
 ## Build
 <!-- Architect + Designer will fill these in as B1, B2, … -->
 
+### Architect-added backend / data build items
+
+- [ ] B-A1. Write migration `pm-app/supabase/migrations/0002_async_standup.sql`
+  creating `async_standup` and `daily_digest` tables, the unique
+  constraint on `(workspace_id, user_id, local_date)`, indexes, and the
+  `updated_at` trigger. (covers AC 1.2, AC 2.2)
+- [ ] B-A2. Enable RLS on both new tables and add policies: members read
+  on `async_standup`, self-only insert/update/delete on `async_standup`,
+  members read on `daily_digest` (no anon write policy). (covers AC 3.4,
+  enforces "no editing other people's entries" non-goal)
+- [ ] B-A3. Add `AsyncStandup` and `DailyDigest` TypeScript interfaces
+  to `pm-app/src/lib/types.ts` matching the schema columns. (covers
+  AC 1.2, AC 3.1)
+- [ ] B-A4. Create `pm-app/src/lib/queries/standup.ts` exporting
+  `getMyEntry`, `listMyHistory`, `listTodayEntries`, `upsertMyEntry`,
+  `getDigest`, `invokeGenerateDigest`. Local date is computed
+  client-side via `Intl.DateTimeFormat`. (covers AC 1.2, AC 2.1, AC 4.1,
+  AC 5.1)
+- [ ] B-A5. Scaffold the Supabase Edge Function at
+  `pm-app/supabase/functions/generate-digest/` (index.ts + deno.json) —
+  parses `{ workspace_id, local_date }`, verifies workspace membership
+  via service-role client, returns 403 on miss. (covers AC 3.4)
+- [ ] B-A6. In the Edge Function, short-circuit with
+  `{ empty: true, reason: 'no_entries' }` when no entries exist for the
+  date — no Anthropic call made. (covers AC 3.2)
+- [ ] B-A7. In the Edge Function, call Claude Haiku via
+  `@anthropic-ai/sdk` with a system prompt that names submitters per
+  bullet (attribution) and uses `cache_control: { type: 'ephemeral' }`
+  on the system block. (covers AC 3.1, AC 3.3)
+- [ ] B-A8. In the Edge Function, upsert the result into `daily_digest`
+  keyed on `(workspace_id, local_date)` so re-runs replace, not
+  duplicate. (covers AC 6.3)
+- [ ] B-A9. Add a per-workspace 30 s rate-limit inside the Edge Function
+  (in-memory token bucket); return 429 when triggered. (mitigates AI
+  cost risk, supports AC 6.1 without enabling spam)
+- [ ] B-A10. Add `pm-app/supabase/functions/.env.example` documenting
+  `ANTHROPIC_API_KEY` and update `pm-app/README.md` with an "Edge
+  Functions" section explaining
+  `supabase functions deploy generate-digest`. (deploy / ops)
+
 ### Designer-added UI build items
 
 - [ ] B-D1. Add `Daily sync` sidebar nav entry (with `Sunrise` icon) and
