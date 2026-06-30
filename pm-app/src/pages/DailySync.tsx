@@ -3,6 +3,7 @@ import { Sunrise } from "lucide-react";
 import { CoverageStrip } from "@/components/standup/CoverageStrip";
 import { DigestCard } from "@/components/standup/DigestCard";
 import { EntryForm } from "@/components/standup/EntryForm";
+import { EntryHistory } from "@/components/standup/EntryHistory";
 import { YesterdayEntry } from "@/components/standup/YesterdayEntry";
 
 export function DailySync() {
@@ -38,7 +39,7 @@ export function DailySync() {
         </div>
       </div>
 
-      {/* TODO(B-D11): History disclosure goes here. */}
+      <EntryHistory />
     </section>
   );
 }

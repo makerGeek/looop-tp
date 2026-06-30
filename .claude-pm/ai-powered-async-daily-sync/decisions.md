@@ -60,5 +60,11 @@ Designer's spec placed coverage under the digest prose, but the build brief aske
 ### 2026-06-30 — Developer — CoverageStrip uses a `refreshKey: number` prop bumped by DailySync after EntryForm submits
 Considered an `onRefresh` callback or shared context, but the simplest design that satisfies AC 5.2 ("updates without a full page reload") is a numeric key that flips in the parent and re-runs the strip's `useEffect`. EntryForm already exposes an `onSubmitted(entry)` callback from B-D3, so DailySync just bumps the key in that handler. No new dep, no global state.
 
+### 2026-06-30 — Developer — EntryHistory uses a `useState` disclosure + custom toggle, not native `<details>`
+A `<details>` element would handle open/close on its own, but it would also fire the open *every* time the user expanded — including after they collapsed and re-expanded — making it harder to enforce the "lazy-fetch once, cache for the session" rule. The state-machine variant (`idle | loading | loaded | error`) plus a controlled `open` flag makes the cache behaviour obvious: we only call `listMyHistory` when state is `idle` and the disclosure opens. Also gives us a clean place to hang the retry handler on the error branch.
+
+### 2026-06-30 — Developer — EntryHistory filters today + yesterday client-side rather than altering `listMyHistory`
+The build brief offered either approach. `listMyHistory`'s signature is shared (CoverageStrip-adjacent code could grow to use it later), and the dataset is tiny per user — filtering two dates client-side is essentially free and keeps the query layer dumb. If history grows enough to matter, the right fix is server-side pagination on `listMyHistory`, not a date-cutoff parameter.
+
 ### 2026-06-30 — Developer — Coverage avatar initials derived from `user_id.slice(0, 8)` for non-self members; email for the signed-in user
 We don't yet have a `profile` table, and `auth.users.email` is only readable for the calling user (RLS). The build brief explicitly accepts user_id-based initials as the v1 fallback. The signed-in user gets the nicer email-based label so they can spot themselves in the strip without confusion; everyone else gets a stable two-char initial derived from their id. When a profile table lands, the row builder is the only place to change.

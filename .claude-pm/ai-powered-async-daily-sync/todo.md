@@ -75,7 +75,7 @@
 - [x] B-D10. Build the coverage strip — avatar list with submitted /
   not-submitted styling and accessible labels; updates after submit
   without full reload. (covers AC 5.1, AC 5.2)
-- [ ] B-D11. Build the `History` disclosure with collapsed / expanded /
+- [x] B-D11. Build the `History` disclosure with collapsed / expanded /
   empty states and read-only past entries. (covers AC 4.1, AC 4.2)
 - [ ] B-D12. Add Cmd-K entries "Go to Daily sync" and "Submit today's
   standup" (the latter navigates to `/sync` and focuses the first
