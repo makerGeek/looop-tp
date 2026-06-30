@@ -18,7 +18,7 @@
   on `async_standup`, self-only insert/update/delete on `async_standup`,
   members read on `daily_digest` (no anon write policy). (covers AC 3.4,
   enforces "no editing other people's entries" non-goal)
-- [ ] B-A3. Add `AsyncStandup` and `DailyDigest` TypeScript interfaces
+- [x] B-A3. Add `AsyncStandup` and `DailyDigest` TypeScript interfaces
   to `pm-app/src/lib/types.ts` matching the schema columns. (covers
   AC 1.2, AC 3.1)
 - [ ] B-A4. Create `pm-app/src/lib/queries/standup.ts` exporting

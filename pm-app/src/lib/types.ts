@@ -87,3 +87,25 @@ export interface Attachment {
   uploaded_by: string;
   created_at: string;
 }
+
+export interface AsyncStandup {
+  id: string;
+  workspace_id: string;
+  user_id: string;
+  local_date: string;
+  yesterday: string;
+  today: string;
+  blockers: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DailyDigest {
+  workspace_id: string;
+  local_date: string;
+  body_md: string;
+  model: string;
+  entry_count: number;
+  generated_at: string;
+  generated_by: string | null;
+}
