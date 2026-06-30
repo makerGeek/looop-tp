@@ -11,3 +11,9 @@ Architect's sketch already split them, and it matches the precision needed: inse
 
 ### 2026-06-30 — Developer — Added `drop policy if exists` guards before each `create policy` on the new tables
 Mirrors the 0001 convention so the migration is idempotent if re-applied during dev. Cheap insurance; no behaviour change on a fresh DB.
+
+### 2026-06-30 — Developer — `todayLocalDate()` assembles YYYY-MM-DD from `Intl.DateTimeFormat.formatToParts` instead of relying on `en-CA` string formatting
+`en-CA` happens to produce YYYY-MM-DD today, but the spec doesn't guarantee a stable separator across runtimes. Pulling parts out and joining with `-` ourselves removes that dependency while still using the user's local timezone via `Intl`.
+
+### 2026-06-30 — Developer — `listMyHistory` takes `(workspaceId, userId)` and is workspace-scoped, no `limit` arg
+The architect's earlier API sketch had `listMyHistory(userId, limit = 30)`, but the B-A4 contract finalised the signature as workspace-scoped without a limit. Followed the contract — pagination can layer on later if a single user racks up enough entries to matter.

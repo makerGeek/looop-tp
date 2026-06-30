@@ -21,7 +21,7 @@
 - [x] B-A3. Add `AsyncStandup` and `DailyDigest` TypeScript interfaces
   to `pm-app/src/lib/types.ts` matching the schema columns. (covers
   AC 1.2, AC 3.1)
-- [ ] B-A4. Create `pm-app/src/lib/queries/standup.ts` exporting
+- [x] B-A4. Create `pm-app/src/lib/queries/standup.ts` exporting
   `getMyEntry`, `listMyHistory`, `listTodayEntries`, `upsertMyEntry`,
   `getDigest`, `invokeGenerateDigest`. Local date is computed
   client-side via `Intl.DateTimeFormat`. (covers AC 1.2, AC 2.1, AC 4.1,
