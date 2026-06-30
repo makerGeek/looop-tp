@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Pencil } from "lucide-react";
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   getMyEntry,
   todayLocalDate,
@@ -12,6 +14,13 @@ import { cn } from "@/lib/cn";
 
 interface Props {
   onSubmitted?: (entry: AsyncStandup) => void;
+}
+
+function formatSavedAt(updatedAt: string): string {
+  return new Date(updatedAt).toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
 
 export function EntryForm({ onSubmitted }: Props) {
@@ -28,8 +37,10 @@ export function EntryForm({ onSubmitted }: Props) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [savedAt, setSavedAt] = useState<string | null>(null);
   const [existingEntry, setExistingEntry] = useState<AsyncStandup | null>(null);
+  // After load, if an entry exists default to read-only ("submitted") view.
+  // If the user clicks Edit, flip to editing. New entries start editing.
+  const [editing, setEditing] = useState(false);
 
   useEffect(() => {
     if (!workspaceId || !userId) return;
@@ -43,6 +54,9 @@ export function EntryForm({ onSubmitted }: Props) {
           setYesterday(entry.yesterday);
           setToday(entry.today);
           setBlockers(entry.blockers);
+          setEditing(false);
+        } else {
+          setEditing(true);
         }
       })
       .catch((e) => {
@@ -80,11 +94,7 @@ export function EntryForm({ onSubmitted }: Props) {
         blockers,
       });
       setExistingEntry(entry);
-      const savedTime = new Date(entry.updated_at).toLocaleTimeString([], {
-        hour: "numeric",
-        minute: "2-digit",
-      });
-      setSavedAt(savedTime);
+      setEditing(false);
       onSubmitted?.(entry);
     } catch (e) {
       setError("Couldn't save your standup. Try again.");
@@ -104,6 +114,16 @@ export function EntryForm({ onSubmitted }: Props) {
     }
   }
 
+  function onEdit() {
+    if (!existingEntry) return;
+    // Re-seed the inputs from the persisted entry (in case state drifted).
+    setYesterday(existingEntry.yesterday);
+    setToday(existingEntry.today);
+    setBlockers(existingEntry.blockers);
+    setError(null);
+    setEditing(true);
+  }
+
   const dateHeader = useMemo(() => {
     const d = new Date();
     return d.toLocaleDateString([], {
@@ -113,20 +133,46 @@ export function EntryForm({ onSubmitted }: Props) {
     });
   }, []);
 
+  const showSubmitted = !editing && existingEntry !== null;
+  const savedAt = existingEntry ? formatSavedAt(existingEntry.updated_at) : null;
+
   return (
     <div className="rounded-lg border border-border bg-card/50 p-5">
-      <header className="mb-4">
+      <header className="mb-4 flex items-start justify-between gap-3">
         <h2 className="text-sm font-semibold">
           Your standup{" "}
           <span className="font-normal text-muted-foreground">
             &middot; <em className="not-italic">{dateHeader}</em>
           </span>
         </h2>
+        {showSubmitted ? (
+          <div className="flex items-center gap-3">
+            {savedAt ? (
+              <span className="text-xs text-muted-foreground">
+                Saved at {savedAt}
+              </span>
+            ) : null}
+            <button
+              type="button"
+              onClick={onEdit}
+              className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium hover:bg-muted"
+            >
+              <Pencil className="h-3 w-3" />
+              Edit
+            </button>
+          </div>
+        ) : null}
       </header>
 
       {loading ? (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading…
+        </div>
+      ) : showSubmitted ? (
+        <div className="space-y-4">
+          <ReadOnlySection label="Yesterday" body={existingEntry!.yesterday} />
+          <ReadOnlySection label="Today" body={existingEntry!.today} />
+          <ReadOnlySection label="Blockers" body={existingEntry!.blockers} />
         </div>
       ) : (
         <div className="space-y-4">
@@ -163,8 +209,6 @@ export function EntryForm({ onSubmitted }: Props) {
             <div className="text-xs text-muted-foreground">
               {error ? (
                 <span className="text-destructive">{error}</span>
-              ) : savedAt ? (
-                <span>Saved at {savedAt}</span>
               ) : null}
             </div>
             <button
@@ -227,5 +271,23 @@ function Field({
         className="w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary disabled:opacity-60"
       />
     </label>
+  );
+}
+
+function ReadOnlySection({ label, body }: { label: string; body: string }) {
+  const trimmed = body.trim();
+  return (
+    <section>
+      <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </h3>
+      {trimmed ? (
+        <div className="prose prose-invert prose-sm max-w-none rounded-md border border-border/60 bg-background/50 px-3 py-2">
+          <Markdown remarkPlugins={[remarkGfm]}>{body}</Markdown>
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground">—</p>
+      )}
+    </section>
   );
 }

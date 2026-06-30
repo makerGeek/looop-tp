@@ -58,10 +58,10 @@
   textareas (Yesterday / Today / Blockers), Submit disabled until ≥ 1
   field is non-empty, Cmd+Enter submit, helper text. (covers AC 1.1,
   AC 1.2, AC 1.3)
-- [ ] B-D4. Build the submitted/read-only state with field-by-field
+- [x] B-D4. Build the submitted/read-only state with field-by-field
   markdown rendering, saved-at timestamp, and `Edit` button to switch
   back to the editable form. (covers AC 2.1, AC 2.2)
-- [ ] B-D5. Build the "yesterday's entry is read-only / fresh empty
+- [x] B-D5. Build the "yesterday's entry is read-only / fresh empty
   form for today" handling using user's local date. (covers AC 2.3)
 - [ ] B-D6. Build the team digest card: `AI-generated` chip (Sparkles
   icon, `bg-primary/15` pill), prose body (Markdown), meta line, and

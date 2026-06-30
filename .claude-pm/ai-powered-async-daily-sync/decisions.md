@@ -38,3 +38,12 @@ B-D3's contract is the editable form; B-D4 owns the submitted/read-only swap. Pr
 
 ### 2026-06-30 — Developer — Cmd/Ctrl+Enter handler lives on each textarea, not on a form-level listener
 Three textareas, one handler reference shared between them; the per-element approach avoids a global `keydown` listener and naturally scopes the shortcut to "while typing inside the form". It also dodges React 19's stricter passive-listener defaults for synthetic form submits.
+
+### 2026-06-30 — Developer — EntryForm derives "Saved at" from `existingEntry.updated_at`, not a separate `savedAt` state
+The previous slice tracked a `savedAt` string only after a save in the current session, which meant the timestamp was blank on first load even when an entry existed. Now that B-D4 owns the submitted/read-only view, the timestamp lives wherever the persisted entry does — so the stamp shows on first paint and updates naturally after any in-place edit. Drops one piece of state and one cross-effect coupling.
+
+### 2026-06-30 — Developer — `yesterdayLocalDate` parses the date string as UTC midnight, then decrements via `setUTCDate`
+The brief's snippet used the same pattern and called out *why*: subtracting 86_400_000 ms from a host-TZ-parsed date would silently cross the wrong boundary near DST. Sticking with UTC arithmetic keeps the date subtraction purely calendar-level. The corresponding `toLocaleDateString` call also passes `timeZone: "UTC"` so the human-readable header doesn't pull the day back into the previous one for users west of UTC.
+
+### 2026-06-30 — Developer — `YesterdayEntry` renders nothing (not an empty placeholder) when there's no prior entry
+The brief was explicit ("If null, renders nothing"), but worth recording: a placeholder card would visually nag new users who joined yesterday with no entry, which contradicts the BA's reminders-non-goal. The component also soft-fails on query error rather than surfacing a banner — this surface is secondary and a fetch hiccup shouldn't draw the eye away from today's form.
