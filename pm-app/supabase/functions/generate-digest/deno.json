@@ -1,0 +1,6 @@
+{
+  "imports": {
+    "@anthropic-ai/sdk": "npm:@anthropic-ai/sdk@^0.32.0",
+    "@supabase/supabase-js": "jsr:@supabase/supabase-js@2"
+  }
+}

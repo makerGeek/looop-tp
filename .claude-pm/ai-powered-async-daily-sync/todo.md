@@ -26,21 +26,21 @@
   `getDigest`, `invokeGenerateDigest`. Local date is computed
   client-side via `Intl.DateTimeFormat`. (covers AC 1.2, AC 2.1, AC 4.1,
   AC 5.1)
-- [ ] B-A5. Scaffold the Supabase Edge Function at
+- [x] B-A5. Scaffold the Supabase Edge Function at
   `pm-app/supabase/functions/generate-digest/` (index.ts + deno.json) —
   parses `{ workspace_id, local_date }`, verifies workspace membership
   via service-role client, returns 403 on miss. (covers AC 3.4)
-- [ ] B-A6. In the Edge Function, short-circuit with
+- [x] B-A6. In the Edge Function, short-circuit with
   `{ empty: true, reason: 'no_entries' }` when no entries exist for the
   date — no Anthropic call made. (covers AC 3.2)
-- [ ] B-A7. In the Edge Function, call Claude Haiku via
+- [x] B-A7. In the Edge Function, call Claude Haiku via
   `@anthropic-ai/sdk` with a system prompt that names submitters per
   bullet (attribution) and uses `cache_control: { type: 'ephemeral' }`
   on the system block. (covers AC 3.1, AC 3.3)
-- [ ] B-A8. In the Edge Function, upsert the result into `daily_digest`
+- [x] B-A8. In the Edge Function, upsert the result into `daily_digest`
   keyed on `(workspace_id, local_date)` so re-runs replace, not
   duplicate. (covers AC 6.3)
-- [ ] B-A9. Add a per-workspace 30 s rate-limit inside the Edge Function
+- [x] B-A9. Add a per-workspace 30 s rate-limit inside the Edge Function
   (in-memory token bucket); return 429 when triggered. (mitigates AI
   cost risk, supports AC 6.1 without enabling spam)
 - [ ] B-A10. Add `pm-app/supabase/functions/.env.example` documenting
