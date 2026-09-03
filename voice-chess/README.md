@@ -125,6 +125,50 @@ voice-chess/
 
 ---
 
+## Building an installable app
+
+The dev server above is the fastest way to try it. To get a build you can hand to
+someone, use [EAS Build](https://docs.expo.dev/build/introduction/) — it compiles
+on Expo's infrastructure and gives you a shareable install page.
+
+It needs an Expo account. Either run `npx eas login`, or set a
+[personal access token](https://expo.dev/settings/access-tokens):
+
+```bash
+export EXPO_TOKEN=...
+```
+
+Then, once per project, link it to your Expo account:
+
+```bash
+npx eas init          # creates the project and writes its id into app.json
+```
+
+**Android** — no extra accounts needed. Produces an `.apk` anyone can sideload:
+
+```bash
+npm run build:android
+```
+
+**iOS** — needs a paid Apple Developer account so EAS can register the target
+devices. Produces an ad-hoc `.ipa`:
+
+```bash
+npm run build:ios
+```
+
+**iOS simulator** — no Apple account needed, but it only runs on a Mac:
+
+```bash
+npm run build:ios:simulator
+```
+
+Each finishes with a link like `https://expo.dev/accounts/<you>/projects/voice-chess/builds/<id>`,
+which carries a QR code and a direct download. Build profiles live in
+[`eas.json`](eas.json).
+
+---
+
 ## Commands
 
 | Command | What it does |
@@ -137,6 +181,9 @@ voice-chess/
 | `npm run typecheck` | `tsc --noEmit`, strict |
 | `npm run lint` | ESLint, Expo config |
 | `npm run doctor` | Dependency and config health check |
+| `npm run build:android` | EAS Build → installable APK |
+| `npm run build:ios` | EAS Build → ad-hoc iOS build |
+| `npm run build:ios:simulator` | EAS Build → iOS simulator build |
 
 ---
 
