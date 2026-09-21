@@ -3,9 +3,13 @@ definePageMeta({ layout: 'blank' })
 useHead({ title: 'Create your account — StoreForge' })
 
 const { signup } = useAuth()
+const route = useRoute()
+
+/** Arriving from an invitation link: prefill the address and accept after signup. */
+const inviteToken = computed(() => (route.query.invite as string | undefined) ?? null)
 
 const name = ref('')
-const email = ref('')
+const email = ref((route.query.email as string | undefined) ?? '')
 const password = ref('')
 const error = ref<string | null>(null)
 const pending = ref(false)
@@ -15,6 +19,10 @@ async function submit() {
   error.value = null
   try {
     await signup(email.value, password.value, name.value)
+
+    if (inviteToken.value) {
+      await $fetch('/api/invitations/accept', { method: 'POST', body: { token: inviteToken.value } })
+    }
     await navigateTo('/dashboard')
   }
   catch (err: any) {
@@ -32,8 +40,8 @@ async function submit() {
       <NuxtLink class="sf-logo" to="/" style="margin-bottom: 24px;">
         <span class="sf-logo__mark">S</span> StoreForge
       </NuxtLink>
-      <h1>Start building</h1>
-      <p>Your first store takes about a minute.</p>
+      <h1>{{ inviteToken ? 'Accept your invitation' : 'Start building' }}</h1>
+      <p>{{ inviteToken ? 'Create an account to join the team.' : 'Your first store takes about a minute.' }}</p>
 
       <div v-if="error" class="sf-alert sf-alert--error">{{ error }}</div>
 
@@ -44,7 +52,10 @@ async function submit() {
         </div>
         <div class="sf-field">
           <label class="sf-label" for="email">Email</label>
-          <input id="email" v-model="email" class="sf-input" type="email" required autocomplete="email">
+          <input
+            id="email" v-model="email" class="sf-input" type="email" required
+            autocomplete="email" :readonly="!!inviteToken"
+          >
         </div>
         <div class="sf-field">
           <label class="sf-label" for="password">Password</label>

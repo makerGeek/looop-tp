@@ -215,3 +215,19 @@ export const webhookEvents = pgTable('webhook_events', {
   type: varchar('type', { length: 80 }).notNull(),
   processedAt: timestamp('processed_at', { withTimezone: true }).notNull().defaultNow(),
 })
+
+/* ----------------------------------------------------------- rate limits */
+
+/**
+ * Fixed-window counters, keyed by what is being limited (an IP, an account)
+ * and the window it falls in. In Postgres rather than memory because more than
+ * one instance runs in production.
+ */
+export const rateLimits = pgTable('rate_limits', {
+  key: varchar('key', { length: 160 }).notNull(),
+  windowStart: timestamp('window_start', { withTimezone: true }).notNull(),
+  hits: integer('hits').notNull().default(0),
+}, table => [
+  primaryKey({ columns: [table.key, table.windowStart] }),
+  index('idx_rate_limits_window').on(table.windowStart),
+])

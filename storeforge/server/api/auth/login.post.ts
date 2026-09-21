@@ -1,9 +1,25 @@
 import { findUserByEmail, startSession, verifyPassword } from '../../utils/auth'
+import { clientIp, enforceRateLimit } from '../../utils/rate-limit'
 
 export default defineEventHandler(async (event) => {
   const body = await readBody<{ email?: string, password?: string }>(event)
   const email = (body?.email ?? '').trim().toLowerCase()
   const password = body?.password ?? ''
+
+  // Limited per address as well as per IP: one stops a distributed attack on a
+  // single account, the other stops one host spraying many accounts.
+  await enforceRateLimit(event, `login:ip:${clientIp(event)}`, {
+    limit: 20,
+    windowSeconds: 300,
+    message: 'Too many sign-in attempts from this network. Try again shortly.',
+  })
+  if (email) {
+    await enforceRateLimit(event, `login:email:${email}`, {
+      limit: 10,
+      windowSeconds: 900,
+      message: 'Too many sign-in attempts for this account. Try again shortly.',
+    })
+  }
 
   const user = await findUserByEmail(email)
   // Same message either way, so this can't be used to enumerate accounts.

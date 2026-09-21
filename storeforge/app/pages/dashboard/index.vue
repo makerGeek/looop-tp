@@ -4,9 +4,17 @@ import type { StoreRecord } from '#shared/types'
 definePageMeta({ middleware: 'auth' })
 useHead({ title: 'Your stores — StoreForge' })
 
-type StoreWithCount = StoreRecord & { productCount: number }
+type StoreWithCount = StoreRecord & { productCount: number, orgName: string, role: string }
 
+const { activeOrgId, orgs } = useAuth()
 const { data: stores, refresh } = await useFetch<StoreWithCount[]>('/api/stores')
+
+/** With more than one organization, the list is scoped to the active one. */
+const visible = computed(() => {
+  if (!stores.value) return []
+  if (orgs.value.length < 2 || !activeOrgId.value) return stores.value
+  return stores.value.filter(s => s.orgId === activeOrgId.value)
+})
 
 const creating = ref(false)
 const newName = ref('')
@@ -19,7 +27,7 @@ async function createStore() {
   try {
     const store = await $fetch<StoreRecord>('/api/stores', {
       method: 'POST',
-      body: { name: newName.value.trim() || 'Untitled store' },
+      body: { name: newName.value.trim() || 'Untitled store', orgId: activeOrgId.value ?? undefined },
     })
     await navigateTo(`/builder/${store.id}`)
   }
@@ -72,13 +80,13 @@ function formatDate(iso: string) {
       </form>
     </div>
 
-    <div v-if="!stores?.length" class="sf-card sf-empty">
+    <div v-if="!visible.length" class="sf-card sf-empty">
       <h3>No stores yet</h3>
       <p>Create one and describe what you want to sell.</p>
     </div>
 
     <div v-else class="sf-grid sf-grid--3">
-      <div v-for="store in stores" :key="store.id" class="sf-card">
+      <div v-for="store in visible" :key="store.id" class="sf-card">
         <div style="display: flex; justify-content: space-between; gap: 12px; align-items: flex-start;">
           <div style="min-width: 0;">
             <h3 style="margin: 0 0 4px; font-size: 16.5px; font-weight: 620;">{{ store.name }}</h3>
@@ -96,6 +104,7 @@ function formatDate(iso: string) {
         <div class="sf-faint" style="font-size: 12.5px; margin-top: 14px;">
           {{ store.productCount }} product{{ store.productCount === 1 ? '' : 's' }}
           · updated {{ formatDate(store.updatedAt) }}
+          <template v-if="orgs.length > 1"> · {{ store.orgName }}</template>
         </div>
 
         <div style="display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap;">

@@ -1,0 +1,42 @@
+# Fly.io deployment.
+#
+# A persistent Node process rather than serverless: an AI build streams for
+# minutes while the model works, and function timeouts would cut it off
+# mid-build. That constraint drives the whole hosting choice.
+
+app = "storeforge"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[deploy]
+  # Migrations run once per deploy, before any new instance takes traffic.
+  # Running them at boot would race every other instance in a rolling deploy.
+  release_command = "npx tsx scripts/migrate.ts"
+  strategy = "rolling"
+
+[env]
+  PORT = "3000"
+  HOST = "0.0.0.0"
+  NODE_ENV = "production"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = "suspend"
+  auto_start_machines = true
+  # At least one machine stays up: a cold start in the middle of a streaming
+  # build would drop the connection.
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    grace_period = "20s"
+    interval = "30s"
+    method = "GET"
+    timeout = "5s"
+    path = "/api/health"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"

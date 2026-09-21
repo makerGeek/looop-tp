@@ -14,6 +14,7 @@ import postgres from 'postgres'
  */
 
 const PORT = Number(process.env.TEST_PORT ?? 3210)
+export const TEST_WEBHOOK_SECRET = 'whsec_test_secret_for_signature_checks'
 const DATABASE_URL = process.env.TEST_DATABASE_URL
   ?? 'postgres://postgres@localhost:5432/storeforge_test'
 
@@ -73,6 +74,13 @@ export async function setup(): Promise<void> {
       // Exercise the local planner, not the live model.
       NUXT_ANTHROPIC_API_KEY: '',
       ANTHROPIC_API_KEY: '',
+      // Fake Stripe credentials. Webhook signature verification and plan
+      // projection are pure local work, so they can be tested for real; any
+      // path that would call Stripe's API is asserted to fail instead.
+      NUXT_STRIPE_SECRET_KEY: 'sk_test_fake_key_for_integration_tests',
+      NUXT_STRIPE_WEBHOOK_SECRET: TEST_WEBHOOK_SECRET,
+      NUXT_STRIPE_PRICE_PRO_MONTHLY: 'price_test_pro',
+      NUXT_STRIPE_PRICE_BUSINESS_MONTHLY: 'price_test_business',
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   })

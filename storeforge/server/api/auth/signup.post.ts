@@ -1,6 +1,16 @@
 import { findUserByEmail, registerUser, startSession } from '../../utils/auth'
+import { issueToken } from '../../utils/tokens'
+import { sendEmail, templates } from '../../email/send'
+import { serverConfig } from '../../config'
+import { clientIp, enforceRateLimit } from '../../utils/rate-limit'
 
 export default defineEventHandler(async (event) => {
+  await enforceRateLimit(event, `signup:${clientIp(event)}`, {
+    limit: 10,
+    windowSeconds: 3600,
+    message: 'Too many accounts created from this network. Try again later.',
+  })
+
   const body = await readBody<{ email?: string, password?: string, name?: string }>(event)
 
   const email = (body?.email ?? '').trim().toLowerCase()
@@ -19,6 +29,14 @@ export default defineEventHandler(async (event) => {
 
   const { user, orgId } = await registerUser(email, name, password)
   await startSession(event, user.id)
+
+  // Verification is not a gate on using the product — it only unlocks actions
+  // that email someone else. A failed send must not fail the signup.
+  const token = await issueToken(user.id, 'verify_email')
+  await sendEmail({
+    to: user.email,
+    ...templates.verifyEmail(user.name, `${serverConfig().appUrl}/verify/${token}`),
+  })
 
   return { id: user.id, email: user.email, name: user.name, orgId }
 })

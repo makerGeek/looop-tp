@@ -43,7 +43,10 @@ async function submit() {
           <input id="email" v-model="email" class="sf-input" type="email" required autocomplete="email">
         </div>
         <div class="sf-field">
-          <label class="sf-label" for="password">Password</label>
+          <div style="display: flex; justify-content: space-between; align-items: baseline;">
+            <label class="sf-label" for="password">Password</label>
+            <NuxtLink to="/forgot" class="sf-faint" style="font-size: 12.5px;">Forgot?</NuxtLink>
+          </div>
           <input id="password" v-model="password" class="sf-input" type="password" required autocomplete="current-password">
         </div>
         <button class="sf-btn" type="submit" style="width: 100%;" :disabled="pending">

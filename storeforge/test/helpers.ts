@@ -7,8 +7,16 @@ export const baseUrl = () => process.env.TEST_BASE_URL ?? 'http://127.0.0.1:3210
  * The suites check tenancy and cart isolation, which only mean anything if two
  * "users" can hold separate sessions against the same server.
  */
+let clientSeq = 0
+
 export function createClient(baseURL: string = baseUrl()) {
   const jar = new Map<string, string>()
+
+  // Each client presents a distinct address. Sharing one would make every
+  // suite contend for the same rate-limit bucket, which is not what separate
+  // users look like.
+  clientSeq += 1
+  const ip = `203.0.113.${clientSeq % 254 + 1}`
 
   function cookieHeader(): string {
     return [...jar.entries()].map(([k, v]) => `${k}=${v}`).join('; ')
@@ -29,6 +37,7 @@ export function createClient(baseURL: string = baseUrl()) {
 
   async function raw(path: string, init: RequestInit = {}): Promise<Response> {
     const headers = new Headers(init.headers)
+    headers.set('x-forwarded-for', ip)
     if (jar.size) headers.set('cookie', cookieHeader())
     if (init.body && !headers.has('content-type')) {
       headers.set('content-type', 'application/json')
