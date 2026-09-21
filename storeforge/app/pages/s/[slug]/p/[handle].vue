@@ -8,6 +8,7 @@ interface ProductPayload {
   store: { name: string, slug: string, brand: Brand, theme: Theme, settings: StoreSettings }
   product: ProductRecord
   related: ProductRecord[]
+  nav: Array<{ label: string, href: string }>
 }
 
 const route = useRoute()
@@ -60,6 +61,7 @@ useHead(() => ({ title: data.value ? `${data.value.product.title} — ${data.val
     :brand="data.store.brand"
     :theme="data.store.theme"
     :settings="data.store.settings"
+    :nav="data.nav"
   >
     <div class="st-wrap">
       <div class="st-pdp">
