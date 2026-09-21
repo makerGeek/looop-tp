@@ -21,6 +21,18 @@ generation. Then you keep editing by talking to it.
 
 ## Quick start
 
+```bash
+docker compose up --build      # http://localhost:3000
+```
+
+Postgres comes up, migrations run, the app starts. Nothing else to install. For
+real AI generation rather than the local template planner, pass a key:
+`ANTHROPIC_API_KEY=sk-ant-… docker compose up --build`.
+
+See [TESTING.md](./TESTING.md) for a guided tour of what to try.
+
+### Without Docker
+
 Needs Node 22 and a Postgres 16 database.
 
 ```bash
