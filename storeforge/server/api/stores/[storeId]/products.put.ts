@@ -1,12 +1,12 @@
 import { parseMoney } from '#shared/money'
 import { upsertProduct } from '../../../db/repo'
-import { requireOwnedStore } from '../../../utils/store-guard'
+import { requireStoreAccess } from '../../../utils/store-guard'
 import { artworkUrl } from '../../../utils/artwork'
 import { slugify } from '../../../utils/slug'
 
 /** Manual product editing from the admin, alongside whatever the AI built. */
 export default defineEventHandler(async (event) => {
-  const store = requireOwnedStore(event)
+  const { store } = await requireStoreAccess(event)
   const body = await readBody<{
     handle?: string, title?: string, description?: string,
     price?: string | number, compareAtPrice?: string | number | null,

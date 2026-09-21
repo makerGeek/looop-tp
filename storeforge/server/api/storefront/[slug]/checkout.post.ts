@@ -1,8 +1,7 @@
 import { clearCart, createOrder, decrementInventory, getOrCreateCart } from '../../../db/repo'
 import { loadStorefront } from '../../../utils/storefront'
 import { capturePayment, computeTotals } from '../../../utils/commerce'
-
-const CART_COOKIE = (slug: string) => `sf_cart_${slug}`
+import { cartCookieName } from '../../../utils/cart-cookie'
 
 interface CheckoutBody {
   email?: string
@@ -17,10 +16,10 @@ interface CheckoutBody {
 
 export default defineEventHandler(async (event) => {
   const slug = getRouterParam(event, 'slug')!
-  const store = loadStorefront(event, slug)
+  const store = await loadStorefront(event, slug)
   const body = await readBody<CheckoutBody>(event)
 
-  const cart = getOrCreateCart(store.id, getCookie(event, CART_COOKIE(slug)))
+  const cart = await getOrCreateCart(store.id, getCookie(event, cartCookieName(slug)))
   if (!cart.lines.length) {
     throw createError({ statusCode: 400, statusMessage: 'Your cart is empty' })
   }
@@ -48,7 +47,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 402, statusMessage: payment.message ?? 'Payment failed' })
   }
 
-  const order = createOrder({
+  const order = await createOrder({
     storeId: store.id,
     email,
     status: 'paid',
@@ -67,10 +66,10 @@ export default defineEventHandler(async (event) => {
     paymentRef: payment.reference,
   })
 
-  for (const line of cart.lines) {
-    decrementInventory(line.productId, line.variantId, line.quantity)
-  }
-  clearCart(store.id, cart.token)
+  await Promise.all(cart.lines.map(line =>
+    decrementInventory(line.productId, line.variantId, line.quantity),
+  ))
+  await clearCart(store.id, cart.token)
 
   return { orderId: order.id, number: order.number, totals: order.totals, currency: order.currency }
 })

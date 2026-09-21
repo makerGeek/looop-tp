@@ -1,7 +1,7 @@
 import { listOrders } from '../../../db/repo'
-import { requireOwnedStore } from '../../../utils/store-guard'
+import { requireStoreAccess } from '../../../utils/store-guard'
 
-export default defineEventHandler((event) => {
-  const store = requireOwnedStore(event)
+export default defineEventHandler(async (event) => {
+  const { store } = await requireStoreAccess(event)
   return listOrders(store.id)
 })

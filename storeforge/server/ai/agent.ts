@@ -1,35 +1,35 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { BuildAction, StoreRecord } from '#shared/types'
 import { listPages, listProducts } from '../db/repo'
+import { serverConfig } from '../config'
 import { SYSTEM_PROMPT, storeContext } from './prompt'
 import { TOOL_DEFINITIONS, executeTool } from './tools'
 import { runFallbackPlanner } from './fallback'
+
+/** Tokens consumed by one builder turn, for quota accounting. */
+export interface BuildUsage {
+  inputTokens: number
+  outputTokens: number
+  cacheReadTokens: number
+}
 
 export type BuildEvent =
   | { type: 'thinking', text: string }
   | { type: 'text', text: string }
   | { type: 'action', action: BuildAction }
-  | { type: 'done', message: string, actions: BuildAction[] }
+  | { type: 'done', message: string, actions: BuildAction[], usage: BuildUsage }
   | { type: 'error', message: string }
 
 /** Hard stop on tool rounds so a confused model can't loop forever on the merchant's bill. */
 const MAX_ROUNDS = 12
 
 /**
- * Resolves AI settings at request time.
- *
- * `runtimeConfig` bakes `process.env` values in at build time, so a production
- * build started with `ANTHROPIC_API_KEY=... node .output/server/index.mjs`
- * would otherwise ignore the key. Reading the environment here keeps the
- * plain variable name working at runtime, while Nuxt's own `NUXT_`-prefixed
- * override still takes precedence when it is set.
+ * Resolves AI settings through the validated config, which reads the
+ * environment at request time rather than baking it in at build time.
  */
 export function aiSettings(): { apiKey: string, model: string } {
-  const config = useRuntimeConfig()
-  return {
-    apiKey: config.anthropicApiKey || process.env.ANTHROPIC_API_KEY || '',
-    model: config.anthropicModel || process.env.ANTHROPIC_MODEL || 'claude-opus-5',
-  }
+  const { anthropicApiKey, anthropicModel } = serverConfig()
+  return { apiKey: anthropicApiKey, model: anthropicModel }
 }
 
 export function isAiConfigured(): boolean {
@@ -57,10 +57,12 @@ export async function* runBuilder(
 
   const client = new Anthropic({ apiKey })
   const actions: BuildAction[] = []
+  const usage: BuildUsage = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 }
   let finalText = ''
 
-  const pages = listPages(store.id).map(p => p.path)
-  const productCount = listProducts(store.id).length
+  const [pageList, productList] = await Promise.all([listPages(store.id), listProducts(store.id)])
+  const pages = pageList.map(p => p.path)
+  const productCount = productList.length
 
   const messages: Anthropic.MessageParam[] = [
     ...history.slice(-10).map(h => ({ role: h.role, content: h.content } as Anthropic.MessageParam)),
@@ -84,6 +86,10 @@ export async function* runBuilder(
       stream.on('text', (delta) => { textBuffer += delta })
 
       const response = await stream.finalMessage()
+
+      usage.inputTokens += response.usage.input_tokens ?? 0
+      usage.outputTokens += response.usage.output_tokens ?? 0
+      usage.cacheReadTokens += response.usage.cache_read_input_tokens ?? 0
 
       if (response.stop_reason === 'refusal') {
         yield { type: 'error', message: 'The model declined this request. Try rephrasing what you want built.' }
@@ -116,7 +122,7 @@ export async function* runBuilder(
 
       if (response.stop_reason !== 'tool_use' || !toolUses.length) {
         if (!finalText && textBuffer.trim()) finalText = textBuffer.trim()
-        yield { type: 'done', message: finalText || 'Done.', actions }
+        yield { type: 'done', message: finalText || 'Done.', actions, usage }
         return
       }
 
@@ -126,7 +132,7 @@ export async function* runBuilder(
       for (const call of toolUses) {
         let outcome
         try {
-          outcome = executeTool(store.id, call.name, call.input)
+          outcome = await executeTool(store.id, call.name, call.input)
         }
         catch (err) {
           const message = err instanceof Error ? err.message : String(err)
@@ -154,6 +160,7 @@ export async function* runBuilder(
       type: 'done',
       message: finalText || 'I made a lot of changes but hit the step limit for one request. Ask me to continue.',
       actions,
+      usage,
     }
   }
   catch (err) {

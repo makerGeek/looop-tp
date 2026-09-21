@@ -1,9 +1,9 @@
 import type { StoreRecord } from '#shared/types'
 import { updateStore } from '../../../db/repo'
-import { requireOwnedStore } from '../../../utils/store-guard'
+import { requireStoreAccess } from '../../../utils/store-guard'
 
 export default defineEventHandler(async (event) => {
-  const store = requireOwnedStore(event)
+  const { store } = await requireStoreAccess(event)
   const body = await readBody<Partial<Pick<StoreRecord, 'name' | 'status' | 'brand' | 'theme' | 'settings'>>>(event)
 
   const patch: Partial<Pick<StoreRecord, 'name' | 'status' | 'brand' | 'theme' | 'settings'>> = {}

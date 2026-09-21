@@ -1,8 +1,9 @@
 import { deleteStore } from '../../../db/repo'
-import { requireOwnedStore } from '../../../utils/store-guard'
+import { requireStoreAccess } from '../../../utils/store-guard'
 
-export default defineEventHandler((event) => {
-  const store = requireOwnedStore(event)
-  deleteStore(store.id)
+export default defineEventHandler(async (event) => {
+  // Deleting a store takes its products and orders with it, so it needs admin.
+  const { store } = await requireStoreAccess(event, 'admin')
+  await deleteStore(store.id)
   return { ok: true }
 })

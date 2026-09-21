@@ -21,27 +21,36 @@ generation. Then you keep editing by talking to it.
 
 ## Quick start
 
+Needs Node 22 and a Postgres 16 database.
+
 ```bash
 npm install
-cp .env.example .env     # optional — see "Running without a key" below
-npm run dev              # http://localhost:3000
+cp .env.example .env          # set NUXT_DATABASE_URL and NUXT_SESSION_SECRET
+createdb storeforge
+npm run db:migrate
+npm run dev                   # http://localhost:3000
 ```
 
 Create an account, create a store, and describe it. To load a demo account and a fully built store
 in one step, with the dev server already running:
 
 ```bash
-npm run seed             # or: npm run seed "a plant shop for low-light apartments"
+npm run seed                  # or: npm run seed "a plant shop for low-light apartments"
 ```
 
 ## Configuration
 
+Every setting is read from a `NUXT_`-prefixed environment variable and validated at boot — a missing
+secret fails immediately with a message naming it, rather than at the first request that needs it.
+See `.env.example` for the full list; the ones that matter most:
+
 | Variable | Purpose |
 |---|---|
-| `ANTHROPIC_API_KEY` | Enables real AI generation. Without it, the local planner runs instead. |
-| `ANTHROPIC_MODEL` | Defaults to `claude-opus-5`. |
-| `DATABASE_PATH` | SQLite file location. Defaults to `.data/storeforge.db`. |
-| `SESSION_SECRET` | Generate with `openssl rand -hex 32`. |
+| `NUXT_DATABASE_URL` | Postgres connection string. Required. |
+| `NUXT_SESSION_SECRET` | Signs session cookies. At least 32 characters. Required. |
+| `NUXT_ANTHROPIC_API_KEY` | Enables real AI generation. Without it, the local planner runs instead. |
+| `NUXT_STRIPE_SECRET_KEY` | Subscription billing. Without it, every org stays on the free plan. |
+| `NUXT_RESEND_API_KEY` | Transactional email. Without it, invites and verification are logged, not sent. |
 
 ### Running without a key
 
@@ -97,12 +106,20 @@ offline and store contents never leave the server.
 ## What actually works
 
 - **Auth** — email/password with scrypt hashing and httpOnly session cookies.
+- **Organizations** — users belong to organizations through memberships with `owner`, `admin` and
+  `member` roles. Every store belongs to an organization, so authorization is always "is this user a
+  member of the store's org". A personal workspace is created on signup, so no code path has to
+  handle an account without one.
+- **Plans and quota** — store counts and AI builds are capped per plan and enforced server-side. The
+  quota is claimed *before* the model runs, in a single statement, so concurrent requests cannot both
+  slip past the last remaining build.
 - **Multi-store** — one account, many stores, each with its own slug, catalogue and orders.
 - **Storefront** — server-rendered, themed entirely by CSS variables the AI sets. Home, arbitrary
   pages, product detail with variants, cart, checkout, order confirmation.
 - **Commerce** — variants, per-variant pricing and stock, flat and free-shipping rules, tax rate,
   inventory decrement on purchase. All money is integer cents; **every total is recomputed
-  server-side from the catalogue**, so a tampered cart payload cannot change what is charged.
+  server-side from the catalogue**, so a tampered cart payload cannot change what is charged. Order
+  numbers are sequential per store and survive concurrent checkouts.
 - **Admin** — product CRUD, order list with status transitions, store settings, publish/unpublish.
 - **Draft/published** — a draft store is previewable by its owner and 404s for everyone else.
 
@@ -128,10 +145,13 @@ app/                     Vue app
   assets/css/            main.css (app shell) · storefront.css (themed renderer)
 server/
   ai/                    agent.ts (tool loop) · tools.ts · prompt.ts · fallback.ts · niches.ts
-  api/                   auth · stores (incl. the streaming build endpoint) · storefront
-  db/                    schema.ts · index.ts · repo.ts
-  utils/                 auth · commerce · artwork · storefront · slug
+  api/                   auth · stores (incl. the streaming build endpoint) · storefront · health
+  billing/               plans.ts (entitlements) · usage.ts (quota + token metering)
+  db/                    schema.ts (Drizzle) · index.ts · repo.ts · migrations/
+  utils/                 auth · store-guard · commerce · artwork · storefront · slug
+  config.ts              validated environment
 shared/                  types.ts · money.ts — imported by both sides via `#shared`
+test/                    integration suites against a real server, plus unit tests
 ```
 
 ## Scripts
@@ -141,20 +161,26 @@ shared/                  types.ts · money.ts — imported by both sides via `#s
 | `npm run dev` | Dev server with HMR |
 | `npm run build` / `npm start` | Production build, then run it |
 | `npm run typecheck` | `vue-tsc` across app, server and shared |
+| `npm test` | Integration + unit suites (needs a build and a Postgres database first) |
+| `npm run db:generate` | Write a migration from the current schema |
+| `npm run db:migrate` | Apply pending migrations |
+| `npm run db:reset` | Drop the schema so migrations rebuild it |
 | `npm run seed` | Create a demo account and a built, published store |
-| `npm run db:reset` | Delete the SQLite database |
+
+### Testing
+
+Integration tests run against the **production bundle over HTTP** rather than a mocked app —
+routing, cookies, streaming and the Postgres driver are the parts most likely to break, and only a
+real server exercises them. So `npm run build` has to come first (CI does this automatically).
+
+They cover: signup and login failure modes, tenant isolation (another org gets 404 on every store
+route), draft-store visibility, catalogue-authoritative pricing against a tampered cart payload,
+shipping thresholds, checkout validation, inventory decrement, concurrent order numbering, and AI
+build quota enforcement.
 
 ---
 
 ## Notes for whoever picks this up
-
-**The sibling-tsconfig shim.** StoreForge currently lives in a subdirectory of a repo that has its
-own `tsconfig.json` extending `./.nuxt/tsconfig.json` — a path that only exists after that project
-has been prepared. Vite's bundler walks up the tree, finds that file, fails to resolve what it
-extends, and rejects every `<script lang="ts">` transform in this project. No tsconfig placed inside
-StoreForge stops the lookup, so `scripts/ensure-sibling-tsconfig.mjs` runs before `dev`, `build` and
-`typecheck` and writes a stub at the missing path. Move StoreForge to its own repository and both
-the script and its `package.json` hooks can be deleted.
 
 **Known limits.** SQLite means a single node; there is no email delivery, no real payment provider,
 no image upload (artwork is generated), and no rate limiting on the build endpoint — a busy

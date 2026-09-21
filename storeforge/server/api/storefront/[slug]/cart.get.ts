@@ -2,17 +2,14 @@ import type { CartView } from '#shared/types'
 import { getOrCreateCart } from '../../../db/repo'
 import { loadStorefront } from '../../../utils/storefront'
 import { computeTotals } from '../../../utils/commerce'
+import { cartCookieName, setCartCookie } from '../../../utils/cart-cookie'
 
-const CART_COOKIE = (slug: string) => `sf_cart_${slug}`
-
-export default defineEventHandler((event): CartView => {
+export default defineEventHandler(async (event): Promise<CartView> => {
   const slug = getRouterParam(event, 'slug')!
-  const store = loadStorefront(event, slug)
+  const store = await loadStorefront(event, slug)
 
-  const cart = getOrCreateCart(store.id, getCookie(event, CART_COOKIE(slug)))
-  setCookie(event, CART_COOKIE(slug), cart.token, {
-    httpOnly: true, sameSite: 'lax', path: '/', maxAge: 60 * 60 * 24 * 14,
-  })
+  const cart = await getOrCreateCart(store.id, getCookie(event, cartCookieName(slug)))
+  setCartCookie(event, slug, cart.token)
 
   return {
     token: cart.token,

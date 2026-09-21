@@ -1,38 +1,39 @@
-import { mkdirSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
-import Database from 'better-sqlite3'
-import { SCHEMA_SQL } from './schema'
+import { drizzle } from 'drizzle-orm/postgres-js'
+import postgres from 'postgres'
+import * as schema from './schema'
+import { serverConfig } from '../config'
 
-let db: Database.Database | null = null
+let client: ReturnType<typeof postgres> | null = null
+let database: ReturnType<typeof drizzle<typeof schema>> | null = null
 
 /**
- * Opens (and on first call, migrates) the SQLite database.
+ * The shared Drizzle connection.
  *
- * SQLite keeps the whole product to a single file with no external service,
- * which is what makes `npm run dev` enough to get a working store builder.
+ * Nitro reuses the module across requests, so the pool is created once. Keep
+ * `max` modest: serverless Postgres providers cap connections far below what a
+ * default pool would open.
  */
-export function useDb(): Database.Database {
-  if (db) return db
+export function useDb() {
+  if (database) return database
 
-  const config = useRuntimeConfig()
-  const file = resolve(process.cwd(), config.databasePath)
-  mkdirSync(dirname(file), { recursive: true })
-
-  db = new Database(file)
-  db.pragma('journal_mode = WAL')
-  db.pragma('foreign_keys = ON')
-  db.exec(SCHEMA_SQL)
-
-  return db
+  const { databaseUrl } = serverConfig()
+  client = postgres(databaseUrl, {
+    max: Number(process.env.DATABASE_POOL_MAX ?? 10),
+    idle_timeout: 20,
+    connect_timeout: 10,
+    // postgres.js parses these into JS Dates; Drizzle's jsonb typing handles the rest.
+    transform: { undefined: null },
+  })
+  database = drizzle(client, { schema })
+  return database
 }
 
-/** Parse a JSON column, falling back rather than throwing on legacy/corrupt rows. */
-export function json<T>(value: string | null | undefined, fallback: T): T {
-  if (!value) return fallback
-  try {
-    return JSON.parse(value) as T
-  }
-  catch {
-    return fallback
-  }
+/** Closes the pool. Used by tests and by graceful shutdown. */
+export async function closeDb(): Promise<void> {
+  await client?.end({ timeout: 5 })
+  client = null
+  database = null
 }
+
+export { schema }
+export type Database = ReturnType<typeof useDb>

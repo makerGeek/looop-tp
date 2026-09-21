@@ -5,27 +5,34 @@
   "type": "module",
   "description": "AI-powered ecommerce store builder — describe your store, Claude builds it.",
   "scripts": {
-    "dev": "node scripts/ensure-sibling-tsconfig.mjs && nuxt dev",
-    "build": "node scripts/ensure-sibling-tsconfig.mjs && nuxt build",
-    "preview": "nuxt preview",
+    "dev": "nuxt dev",
+    "build": "nuxt build",
     "start": "node .output/server/index.mjs",
-    "generate": "nuxt generate",
+    "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
-    "typecheck": "node scripts/ensure-sibling-tsconfig.mjs && nuxt typecheck",
-    "db:reset": "node scripts/reset-db.mjs",
-    "seed": "node scripts/seed.mjs"
+    "typecheck": "nuxt typecheck",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "db:studio": "drizzle-kit studio",
+    "db:reset": "tsx scripts/reset-db.ts",
+    "seed": "node scripts/seed.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.127.0",
-    "better-sqlite3": "^11.10.0",
+    "drizzle-orm": "^0.45.2",
     "nuxt": "^3.17.0",
+    "postgres": "^3.4.9",
     "vue": "^3.5.13",
     "vue-router": "^4.5.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.12",
+    "drizzle-kit": "^0.31.10",
+    "tsx": "^4.23.15",
     "typescript": "^5.7.3",
+    "vitest": "^5.0.1",
     "vue-tsc": "^2.2.0"
   }
 }

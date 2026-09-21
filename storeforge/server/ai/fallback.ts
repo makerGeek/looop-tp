@@ -4,7 +4,10 @@ import { artworkUrl } from '../utils/artwork'
 import { slugify } from '../utils/slug'
 import { executeTool } from './tools'
 import { matchNiche, type NicheKit } from './niches'
-import type { BuildEvent } from './agent'
+import type { BuildEvent, BuildUsage } from './agent'
+
+/** The local planner spends no tokens, but the event shape stays the same. */
+const NO_USAGE: BuildUsage = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 }
 
 /**
  * The no-API-key planner.
@@ -20,12 +23,12 @@ export async function* runFallbackPlanner(
   userMessage: string,
 ): AsyncGenerator<BuildEvent> {
   const actions: BuildAction[] = []
-  const emit = (action: BuildAction | undefined) => {
-    if (action) actions.push(action)
-    return action
-  }
 
-  const isEmpty = listPages(store.id).length === 0 && listProducts(store.id).length === 0
+  const [existingPages, existingProducts] = await Promise.all([
+    listPages(store.id),
+    listProducts(store.id),
+  ])
+  const isEmpty = existingPages.length === 0 && existingProducts.length === 0
   const intent = classify(userMessage, isEmpty)
 
   yield { type: 'thinking', text: `Local planner: ${intent.label}` }
@@ -34,10 +37,14 @@ export async function* runFallbackPlanner(
     const kit = matchNiche(userMessage)
     const name = deriveName(userMessage, kit)
 
-    for (const event of buildWholeStore(store, kit, name)) {
-      const action = emit(event)
-      if (action) yield { type: 'action', action }
-      // Yield to the event loop so the client sees steps arrive progressively.
+    for (const step of buildSteps(store, kit, name)) {
+      const { action } = await executeTool(store.id, step.tool, step.input)
+      if (action) {
+        actions.push(action)
+        yield { type: 'action', action }
+      }
+      // A short pause so the client sees steps arrive progressively rather than
+      // all at once — the model path is naturally paced by generation latency.
       await new Promise(resolve => setTimeout(resolve, 120))
     }
 
@@ -46,30 +53,39 @@ export async function* runFallbackPlanner(
       message: `Built ${name} — a ${kit.id === 'generic' ? 'general goods' : kit.id} store with ${kit.products.length} products, a home page, a catalogue and an about page. `
         + 'Set ANTHROPIC_API_KEY to have Claude build to your description instead of this template, then ask for any change you like.',
       actions,
+      usage: NO_USAGE,
     }
     return
   }
 
   if (intent.kind === 'publish') {
-    const action = emit(executeTool(store.id, 'publish_store', { published: intent.published }).action)
-    if (action) yield { type: 'action', action }
+    const { action } = await executeTool(store.id, 'publish_store', { published: intent.published })
+    if (action) {
+      actions.push(action)
+      yield { type: 'action', action }
+    }
     yield {
       type: 'done',
       message: intent.published
         ? `${store.name} is live. Anyone with the link can browse and check out.`
         : `${store.name} is back to draft and no longer publicly reachable.`,
       actions,
+      usage: NO_USAGE,
     }
     return
   }
 
   if (intent.kind === 'recolor') {
-    const action = emit(executeTool(store.id, 'set_brand_and_theme', { palette: intent.palette }).action)
-    if (action) yield { type: 'action', action }
+    const { action } = await executeTool(store.id, 'set_brand_and_theme', { palette: intent.palette })
+    if (action) {
+      actions.push(action)
+      yield { type: 'action', action }
+    }
     yield {
       type: 'done',
       message: `Switched the palette to ${intent.label}. Add an API key for edits more specific than this.`,
       actions,
+      usage: NO_USAGE,
     }
     return
   }
@@ -79,6 +95,7 @@ export async function* runFallbackPlanner(
     message: 'The local planner only handles building a new store, recolouring it, and publishing. '
       + 'Set ANTHROPIC_API_KEY in your .env and restart to have Claude handle requests like this one.',
     actions: [],
+    usage: NO_USAGE,
   }
 }
 
@@ -145,97 +162,119 @@ function titleCase(input: string): string {
   return input.trim().replace(/\s+/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 }
 
-/** Runs the full build, returning each tool's action in order. */
-function* buildWholeStore(store: StoreRecord, kit: NicheKit, name: string): Generator<BuildAction | undefined> {
-  yield executeTool(store.id, 'set_brand_and_theme', {
-    name,
-    tagline: kit.tagline,
-    announcement: kit.announcement,
-    palette: kit.theme.palette,
-    fonts: kit.theme.fonts,
-    radius: kit.theme.radius,
-    density: kit.theme.density,
-    buttonStyle: kit.theme.buttonStyle,
-  }).action
+/**
+ * The ordered tool calls that make up a full build.
+ *
+ * Returning descriptions rather than executing lets the caller await each one
+ * and stream its result, and makes the sequence trivially testable.
+ */
+interface BuildStep { tool: string, input: Record<string, unknown> }
 
-  yield executeTool(store.id, 'add_products', {
-    products: kit.products.map(p => ({
-      title: p.title,
-      handle: slugify(p.title),
-      description: p.description,
-      price: p.price,
-      compareAtPrice: p.compareAt,
-      collection: p.collection,
-      inventory: 80,
-      variants: p.variants?.map(v => ({ title: v })),
-    })),
-  }).action
-
+function buildSteps(store: StoreRecord, kit: NicheKit, name: string): BuildStep[] {
   const heroHandles = kit.products.slice(0, 3).map(p => slugify(p.title))
 
-  yield executeTool(store.id, 'upsert_page', {
-    path: '/',
-    title: name,
-    navLabel: 'Home',
-    navOrder: 0,
-    sections: [
-      {
-        type: 'hero',
-        eyebrow: kit.announcement.split('·')[0]?.trim(),
-        heading: kit.tagline,
-        subheading: kit.about.split('. ').slice(0, 2).join('. ') + '.',
-        ctaLabel: 'Shop the catalogue',
-        ctaHref: '/products',
-        secondaryCtaLabel: 'Our story',
-        secondaryCtaHref: '/about',
-        layout: 'split',
-        image: artworkUrl(`${store.id}:hero`, name, 'scene'),
+  return [
+    {
+      tool: 'set_brand_and_theme',
+      input: {
+        name,
+        tagline: kit.tagline,
+        announcement: kit.announcement,
+        palette: kit.theme.palette,
+        fonts: kit.theme.fonts,
+        radius: kit.theme.radius,
+        density: kit.theme.density,
+        buttonStyle: kit.theme.buttonStyle,
       },
-      { type: 'featured_products', heading: 'Start here', subheading: 'The three people order first.', handles: heroHandles, columns: 3 },
-      { type: 'feature_grid', heading: 'Why buy from us', items: kit.valueProps },
-      { type: 'testimonials', heading: 'What customers say', items: kit.testimonials },
-      { type: 'featured_products', heading: 'The full catalogue', limit: 8, columns: 4 },
-      { type: 'cta_banner', heading: 'Questions before you buy?', body: 'Email us and a human who knows the products will answer.', ctaLabel: 'Read the FAQ', ctaHref: '/about' },
-    ],
-  }).action
-
-  yield executeTool(store.id, 'upsert_page', {
-    path: '/products',
-    title: 'Everything we make',
-    navLabel: 'Shop',
-    navOrder: 1,
-    sections: [
-      { type: 'rich_text', heading: 'Everything we make', body: kit.about, align: 'center' },
-      { type: 'featured_products', limit: 50, columns: 3 },
-      { type: 'newsletter', heading: 'New arrivals, occasionally', body: 'A short email when something genuinely new lands. Usually monthly, never more.', buttonLabel: 'Subscribe' },
-    ],
-  }).action
-
-  yield executeTool(store.id, 'upsert_page', {
-    path: '/about',
-    title: 'About',
-    navLabel: 'About',
-    navOrder: 2,
-    sections: [
-      { type: 'rich_text', heading: 'Our story', body: kit.about },
-      { type: 'feature_grid', heading: 'How we work', items: kit.valueProps },
-      { type: 'faq', heading: 'Frequently asked', items: kit.faq },
-      { type: 'cta_banner', heading: 'Ready to browse?', ctaLabel: 'Shop the catalogue', ctaHref: '/products' },
-    ],
-  }).action
-
-  yield executeTool(store.id, 'update_settings', {
-    currency: 'USD',
-    shippingFlat: 5.99,
-    freeShippingThreshold: 75,
-    supportEmail: `hello@${slugify(name)}.com`,
-    footerLinks: [
-      { label: 'Shop', href: '/products' },
-      { label: 'About', href: '/about' },
-    ],
-    socialLinks: [
-      { label: 'Instagram', href: 'https://instagram.com' },
-      { label: 'Newsletter', href: '/about' },
-    ],
-  }).action
+    },
+    {
+      tool: 'add_products',
+      input: {
+        products: kit.products.map(p => ({
+          title: p.title,
+          handle: slugify(p.title),
+          description: p.description,
+          price: p.price,
+          compareAtPrice: p.compareAt,
+          collection: p.collection,
+          inventory: 80,
+          variants: p.variants?.map(v => ({ title: v })),
+        })),
+      },
+    },
+    {
+      tool: 'upsert_page',
+      input: {
+        path: '/',
+        title: name,
+        navLabel: 'Home',
+        navOrder: 0,
+        sections: [
+          {
+            type: 'hero',
+            eyebrow: kit.announcement.split('·')[0]?.trim(),
+            heading: kit.tagline,
+            subheading: kit.about.split('. ').slice(0, 2).join('. ') + '.',
+            ctaLabel: 'Shop the catalogue',
+            ctaHref: '/products',
+            secondaryCtaLabel: 'Our story',
+            secondaryCtaHref: '/about',
+            layout: 'split',
+            image: artworkUrl(`${store.id}:hero`, name, 'scene'),
+          },
+          { type: 'featured_products', heading: 'Start here', subheading: 'The three people order first.', handles: heroHandles, columns: 3 },
+          { type: 'feature_grid', heading: 'Why buy from us', items: kit.valueProps },
+          { type: 'testimonials', heading: 'What customers say', items: kit.testimonials },
+          { type: 'featured_products', heading: 'The full catalogue', limit: 8, columns: 4 },
+          { type: 'cta_banner', heading: 'Questions before you buy?', body: 'Email us and a human who knows the products will answer.', ctaLabel: 'Read the FAQ', ctaHref: '/about' },
+        ],
+      },
+    },
+    {
+      tool: 'upsert_page',
+      input: {
+        path: '/products',
+        title: 'Everything we make',
+        navLabel: 'Shop',
+        navOrder: 1,
+        sections: [
+          { type: 'rich_text', heading: 'Everything we make', body: kit.about, align: 'center' },
+          { type: 'featured_products', limit: 50, columns: 3 },
+          { type: 'newsletter', heading: 'New arrivals, occasionally', body: 'A short email when something genuinely new lands. Usually monthly, never more.', buttonLabel: 'Subscribe' },
+        ],
+      },
+    },
+    {
+      tool: 'upsert_page',
+      input: {
+        path: '/about',
+        title: 'About',
+        navLabel: 'About',
+        navOrder: 2,
+        sections: [
+          { type: 'rich_text', heading: 'Our story', body: kit.about },
+          { type: 'feature_grid', heading: 'How we work', items: kit.valueProps },
+          { type: 'faq', heading: 'Frequently asked', items: kit.faq },
+          { type: 'cta_banner', heading: 'Ready to browse?', ctaLabel: 'Shop the catalogue', ctaHref: '/products' },
+        ],
+      },
+    },
+    {
+      tool: 'update_settings',
+      input: {
+        currency: 'USD',
+        shippingFlat: 5.99,
+        freeShippingThreshold: 75,
+        supportEmail: `hello@${slugify(name)}.com`,
+        footerLinks: [
+          { label: 'Shop', href: '/products' },
+          { label: 'About', href: '/about' },
+        ],
+        socialLinks: [
+          { label: 'Instagram', href: 'https://instagram.com' },
+          { label: 'Newsletter', href: '/about' },
+        ],
+      },
+    },
+  ]
 }

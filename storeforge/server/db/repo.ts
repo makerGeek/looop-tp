@@ -1,95 +1,25 @@
 import { randomUUID } from 'node:crypto'
+import { and, asc, desc, eq, inArray, ne, sql } from 'drizzle-orm'
 import type {
   Brand, CartLine, ChatMessageRecord, OrderRecord, PageRecord,
-  ProductRecord, Section, StoreRecord, StoreSettings, Theme, VariantRecord,
+  ProductRecord, Section, StoreRecord, StoreSettings, Theme,
 } from '#shared/types'
-import { json, useDb } from './index'
+import { useDb } from './index'
+import {
+  carts, chatMessages, memberships, orders, organizations, pages,
+  products, stores, variants, type Role,
+} from './schema'
 
 export const newId = () => randomUUID()
-export const now = () => new Date().toISOString()
 
-/* ------------------------------------------------------------------ users */
-
-export interface UserRow { id: string, email: string, name: string, password_hash: string, created_at: string }
-
-export function createUser(email: string, name: string, passwordHash: string): UserRow {
-  const row: UserRow = {
-    id: newId(),
-    email: email.toLowerCase().trim(),
-    name,
-    password_hash: passwordHash,
-    created_at: now(),
-  }
-  useDb().prepare(
-    'INSERT INTO users (id, email, name, password_hash, created_at) VALUES (@id, @email, @name, @password_hash, @created_at)',
-  ).run(row)
-  return row
-}
-
-export function findUserByEmail(email: string): UserRow | undefined {
-  return useDb().prepare('SELECT * FROM users WHERE email = ?').get(email.toLowerCase().trim()) as UserRow | undefined
-}
-
-export function findUserById(id: string): UserRow | undefined {
-  return useDb().prepare('SELECT * FROM users WHERE id = ?').get(id) as UserRow | undefined
-}
-
-/* --------------------------------------------------------------- sessions */
-
-export function createSession(userId: string, ttlDays = 30): string {
-  const id = randomUUID().replace(/-/g, '') + randomUUID().replace(/-/g, '')
-  const expires = new Date(Date.now() + ttlDays * 86_400_000).toISOString()
-  useDb().prepare(
-    'INSERT INTO sessions (id, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)',
-  ).run(id, userId, expires, now())
-  return id
-}
-
-export function findSessionUser(sessionId: string): UserRow | undefined {
-  const row = useDb().prepare(
-    `SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id
-     WHERE s.id = ? AND s.expires_at > ?`,
-  ).get(sessionId, now()) as UserRow | undefined
-  return row
-}
-
-export function deleteSession(sessionId: string): void {
-  useDb().prepare('DELETE FROM sessions WHERE id = ?').run(sessionId)
-}
-
-/* ----------------------------------------------------------------- stores */
-
-interface StoreRow {
-  id: string, user_id: string, name: string, slug: string, status: string,
-  brand: string, theme: string, settings: string, created_at: string, updated_at: string
-}
-
-function mapStore(row: StoreRow): StoreRecord {
-  return {
-    id: row.id,
-    userId: row.user_id,
-    name: row.name,
-    slug: row.slug,
-    status: row.status === 'published' ? 'published' : 'draft',
-    brand: json<Brand>(row.brand, { name: row.name }),
-    theme: json<Theme>(row.theme, defaultTheme()),
-    settings: json<StoreSettings>(row.settings, defaultSettings()),
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  }
-}
+/* ---------------------------------------------------------------- stores */
 
 export function defaultTheme(): Theme {
   return {
     palette: {
-      primary: '#111827',
-      onPrimary: '#ffffff',
-      background: '#ffffff',
-      surface: '#f9fafb',
-      text: '#111827',
-      muted: '#6b7280',
-      border: '#e5e7eb',
-      accent: '#4f46e5',
+      primary: '#111827', onPrimary: '#ffffff', background: '#ffffff',
+      surface: '#f9fafb', text: '#111827', muted: '#6b7280',
+      border: '#e5e7eb', accent: '#4f46e5',
     },
     fonts: { heading: 'Georgia, serif', body: 'system-ui, sans-serif' },
     radius: 'md',
@@ -109,220 +39,233 @@ export function defaultSettings(): StoreSettings {
   }
 }
 
-export function createStore(userId: string, name: string, slug: string): StoreRecord {
-  const ts = now()
-  const row: StoreRow = {
+type StoreRow = typeof stores.$inferSelect
+
+function mapStore(row: StoreRow): StoreRecord {
+  return {
+    id: row.id,
+    orgId: row.orgId,
+    name: row.name,
+    slug: row.slug,
+    status: row.status,
+    brand: row.brand,
+    theme: row.theme,
+    settings: row.settings,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  }
+}
+
+export async function createStore(orgId: string, name: string, slug: string): Promise<StoreRecord> {
+  const [row] = await useDb().insert(stores).values({
     id: newId(),
-    user_id: userId,
+    orgId,
     name,
     slug,
     status: 'draft',
-    brand: JSON.stringify({ name } satisfies Brand),
-    theme: JSON.stringify(defaultTheme()),
-    settings: JSON.stringify(defaultSettings()),
-    created_at: ts,
-    updated_at: ts,
-  }
-  useDb().prepare(
-    `INSERT INTO stores (id, user_id, name, slug, status, brand, theme, settings, created_at, updated_at)
-     VALUES (@id, @user_id, @name, @slug, @status, @brand, @theme, @settings, @created_at, @updated_at)`,
-  ).run(row)
-  return mapStore(row)
+    brand: { name } satisfies Brand,
+    theme: defaultTheme(),
+    settings: defaultSettings(),
+  }).returning()
+
+  return mapStore(row!)
 }
 
-export function listStores(userId: string): StoreRecord[] {
-  const rows = useDb().prepare('SELECT * FROM stores WHERE user_id = ? ORDER BY updated_at DESC').all(userId) as StoreRow[]
+export async function listStoresForOrg(orgId: string): Promise<StoreRecord[]> {
+  const rows = await useDb().select().from(stores)
+    .where(eq(stores.orgId, orgId))
+    .orderBy(desc(stores.updatedAt))
   return rows.map(mapStore)
 }
 
-export function getStore(id: string): StoreRecord | undefined {
-  const row = useDb().prepare('SELECT * FROM stores WHERE id = ?').get(id) as StoreRow | undefined
+export async function countStoresForOrg(orgId: string): Promise<number> {
+  const [row] = await useDb()
+    .select({ n: sql<number>`count(*)::int` })
+    .from(stores)
+    .where(eq(stores.orgId, orgId))
+  return row?.n ?? 0
+}
+
+export async function getStore(id: string): Promise<StoreRecord | undefined> {
+  const [row] = await useDb().select().from(stores).where(eq(stores.id, id)).limit(1)
   return row ? mapStore(row) : undefined
 }
 
-export function getStoreBySlug(slug: string): StoreRecord | undefined {
-  const row = useDb().prepare('SELECT * FROM stores WHERE slug = ?').get(slug) as StoreRow | undefined
+export async function getStoreBySlug(slug: string): Promise<StoreRecord | undefined> {
+  const [row] = await useDb().select().from(stores).where(eq(stores.slug, slug)).limit(1)
   return row ? mapStore(row) : undefined
 }
 
-export function slugExists(slug: string): boolean {
-  return !!useDb().prepare('SELECT 1 FROM stores WHERE slug = ?').get(slug)
+export async function slugExists(slug: string): Promise<boolean> {
+  const [row] = await useDb().select({ id: stores.id }).from(stores).where(eq(stores.slug, slug)).limit(1)
+  return !!row
 }
 
-export function updateStore(
+export async function updateStore(
   id: string,
   patch: Partial<Pick<StoreRecord, 'name' | 'status' | 'brand' | 'theme' | 'settings'>>,
-): StoreRecord | undefined {
-  const current = getStore(id)
-  if (!current) return undefined
-
-  const merged = {
-    name: patch.name ?? current.name,
-    status: patch.status ?? current.status,
-    brand: JSON.stringify(patch.brand ?? current.brand),
-    theme: JSON.stringify(patch.theme ?? current.theme),
-    settings: JSON.stringify(patch.settings ?? current.settings),
-    updated_at: now(),
-    id,
-  }
-  useDb().prepare(
-    `UPDATE stores SET name = @name, status = @status, brand = @brand,
-     theme = @theme, settings = @settings, updated_at = @updated_at WHERE id = @id`,
-  ).run(merged)
-  return getStore(id)
+): Promise<StoreRecord | undefined> {
+  const [row] = await useDb().update(stores)
+    .set({ ...patch, updatedAt: new Date() })
+    .where(eq(stores.id, id))
+    .returning()
+  return row ? mapStore(row) : undefined
 }
 
-export function deleteStore(id: string): void {
-  useDb().prepare('DELETE FROM stores WHERE id = ?').run(id)
+export async function deleteStore(id: string): Promise<void> {
+  await useDb().delete(stores).where(eq(stores.id, id))
 }
 
-export function touchStore(id: string): void {
-  useDb().prepare('UPDATE stores SET updated_at = ? WHERE id = ?').run(now(), id)
+async function touchStore(storeId: string): Promise<void> {
+  await useDb().update(stores).set({ updatedAt: new Date() }).where(eq(stores.id, storeId))
 }
 
-/* ------------------------------------------------------------------ pages */
+/* ----------------------------------------------------------------- pages */
 
-interface PageRow {
-  id: string, store_id: string, path: string, title: string,
-  sections: string, is_home: number, nav_label: string | null, nav_order: number
-}
+type PageRow = typeof pages.$inferSelect
 
-function mapPage(row: PageRow): PageRecord {
-  return {
-    id: row.id,
-    storeId: row.store_id,
-    path: row.path,
-    title: row.title,
-    sections: json<Section[]>(row.sections, []),
-    isHome: !!row.is_home,
-    navLabel: row.nav_label,
-    navOrder: row.nav_order,
-  }
-}
+const mapPage = (row: PageRow): PageRecord => ({
+  id: row.id,
+  storeId: row.storeId,
+  path: row.path,
+  title: row.title,
+  sections: row.sections,
+  isHome: row.isHome,
+  navLabel: row.navLabel,
+  navOrder: row.navOrder,
+})
 
-export function listPages(storeId: string): PageRecord[] {
-  const rows = useDb().prepare(
-    'SELECT * FROM pages WHERE store_id = ? ORDER BY is_home DESC, nav_order ASC, title ASC',
-  ).all(storeId) as PageRow[]
+export async function listPages(storeId: string): Promise<PageRecord[]> {
+  const rows = await useDb().select().from(pages)
+    .where(eq(pages.storeId, storeId))
+    .orderBy(desc(pages.isHome), asc(pages.navOrder), asc(pages.title))
   return rows.map(mapPage)
 }
 
-export function getPage(storeId: string, path: string): PageRecord | undefined {
-  const row = useDb().prepare('SELECT * FROM pages WHERE store_id = ? AND path = ?').get(storeId, path) as PageRow | undefined
+export async function getPage(storeId: string, path: string): Promise<PageRecord | undefined> {
+  const [row] = await useDb().select().from(pages)
+    .where(and(eq(pages.storeId, storeId), eq(pages.path, path)))
+    .limit(1)
   return row ? mapPage(row) : undefined
 }
 
-export function upsertPage(page: {
+export async function upsertPage(page: {
   storeId: string, path: string, title: string, sections: Section[]
   isHome?: boolean, navLabel?: string | null, navOrder?: number
-}): PageRecord {
-  const existing = getPage(page.storeId, page.path)
-  const row = {
+}): Promise<PageRecord> {
+  const db = useDb()
+  const existing = await getPage(page.storeId, page.path)
+  const isHome = page.isHome ?? existing?.isHome ?? page.path === '/'
+
+  const values = {
     id: existing?.id ?? newId(),
-    store_id: page.storeId,
+    storeId: page.storeId,
     path: page.path,
     title: page.title,
-    sections: JSON.stringify(page.sections),
-    is_home: (page.isHome ?? existing?.isHome ?? page.path === '/') ? 1 : 0,
-    nav_label: page.navLabel !== undefined ? page.navLabel : (existing?.navLabel ?? null),
-    nav_order: page.navOrder ?? existing?.navOrder ?? 0,
+    sections: page.sections,
+    isHome,
+    navLabel: page.navLabel !== undefined ? page.navLabel : (existing?.navLabel ?? null),
+    navOrder: page.navOrder ?? existing?.navOrder ?? 0,
   }
 
-  const db = useDb()
-  if (row.is_home) {
-    // Only one page can be the home page.
-    db.prepare('UPDATE pages SET is_home = 0 WHERE store_id = ? AND path != ?').run(page.storeId, page.path)
+  if (isHome) {
+    // Exactly one page per store is the home page.
+    await db.update(pages).set({ isHome: false })
+      .where(and(eq(pages.storeId, page.storeId), ne(pages.path, page.path)))
   }
-  db.prepare(
-    `INSERT INTO pages (id, store_id, path, title, sections, is_home, nav_label, nav_order)
-     VALUES (@id, @store_id, @path, @title, @sections, @is_home, @nav_label, @nav_order)
-     ON CONFLICT (store_id, path) DO UPDATE SET
-       title = @title, sections = @sections, is_home = @is_home,
-       nav_label = @nav_label, nav_order = @nav_order`,
-  ).run(row)
 
-  touchStore(page.storeId)
-  return getPage(page.storeId, page.path)!
+  const [row] = await db.insert(pages).values(values)
+    .onConflictDoUpdate({
+      target: [pages.storeId, pages.path],
+      set: {
+        title: values.title,
+        sections: values.sections,
+        isHome: values.isHome,
+        navLabel: values.navLabel,
+        navOrder: values.navOrder,
+      },
+    })
+    .returning()
+
+  await touchStore(page.storeId)
+  return mapPage(row!)
 }
 
-export function deletePage(storeId: string, path: string): void {
-  useDb().prepare('DELETE FROM pages WHERE store_id = ? AND path = ? AND is_home = 0').run(storeId, path)
-  touchStore(storeId)
+export async function deletePage(storeId: string, path: string): Promise<void> {
+  await useDb().delete(pages)
+    .where(and(eq(pages.storeId, storeId), eq(pages.path, path), eq(pages.isHome, false)))
+  await touchStore(storeId)
 }
 
-/* --------------------------------------------------------------- products */
+/* -------------------------------------------------------------- products */
 
-interface ProductRow {
-  id: string, store_id: string, handle: string, title: string, description: string,
-  price_cents: number, compare_at_cents: number | null, image: string | null,
-  status: string, inventory: number, tags: string, collection: string | null, created_at: string
-}
+type ProductRow = typeof products.$inferSelect
+type VariantRow = typeof variants.$inferSelect
 
-interface VariantRow {
-  id: string, product_id: string, title: string,
-  price_cents: number | null, sku: string | null, inventory: number, position: number
-}
-
-function mapProduct(row: ProductRow, variants: VariantRow[]): ProductRecord {
+function mapProduct(row: ProductRow, rows: VariantRow[]): ProductRecord {
   return {
     id: row.id,
-    storeId: row.store_id,
+    storeId: row.storeId,
     handle: row.handle,
     title: row.title,
     description: row.description,
-    priceCents: row.price_cents,
-    compareAtCents: row.compare_at_cents,
+    priceCents: row.priceCents,
+    compareAtCents: row.compareAtCents,
     image: row.image,
-    status: row.status === 'draft' ? 'draft' : 'active',
+    status: row.status,
     inventory: row.inventory,
-    tags: json<string[]>(row.tags, []),
+    tags: row.tags,
     collection: row.collection,
-    createdAt: row.created_at,
-    variants: variants.map(v => ({
+    createdAt: row.createdAt.toISOString(),
+    variants: rows.map(v => ({
       id: v.id,
-      productId: v.product_id,
+      productId: v.productId,
       title: v.title,
-      priceCents: v.price_cents,
+      priceCents: v.priceCents,
       sku: v.sku,
       inventory: v.inventory,
-    } satisfies VariantRecord)),
+    })),
   }
 }
 
-function variantsFor(productIds: string[]): Map<string, VariantRow[]> {
+/** Loads variants for many products in one query, avoiding an N+1 on the grid. */
+async function variantsFor(productIds: string[]): Promise<Map<string, VariantRow[]>> {
   const map = new Map<string, VariantRow[]>()
   if (!productIds.length) return map
-  const placeholders = productIds.map(() => '?').join(',')
-  const rows = useDb().prepare(
-    `SELECT * FROM variants WHERE product_id IN (${placeholders}) ORDER BY position ASC`,
-  ).all(...productIds) as VariantRow[]
+
+  const rows = await useDb().select().from(variants)
+    .where(inArray(variants.productId, productIds))
+    .orderBy(asc(variants.position))
+
   for (const row of rows) {
-    const list = map.get(row.product_id) ?? []
+    const list = map.get(row.productId) ?? []
     list.push(row)
-    map.set(row.product_id, list)
+    map.set(row.productId, list)
   }
   return map
 }
 
-export function listProducts(storeId: string, opts: { activeOnly?: boolean } = {}): ProductRecord[] {
-  const sql = opts.activeOnly
-    ? 'SELECT * FROM products WHERE store_id = ? AND status = \'active\' ORDER BY created_at ASC'
-    : 'SELECT * FROM products WHERE store_id = ? ORDER BY created_at ASC'
-  const rows = useDb().prepare(sql).all(storeId) as ProductRow[]
-  const variants = variantsFor(rows.map(r => r.id))
-  return rows.map(r => mapProduct(r, variants.get(r.id) ?? []))
+export async function listProducts(
+  storeId: string,
+  opts: { activeOnly?: boolean } = {},
+): Promise<ProductRecord[]> {
+  const where = opts.activeOnly
+    ? and(eq(products.storeId, storeId), eq(products.status, 'active'))
+    : eq(products.storeId, storeId)
+
+  const rows = await useDb().select().from(products).where(where).orderBy(asc(products.createdAt))
+  const byProduct = await variantsFor(rows.map(r => r.id))
+  return rows.map(r => mapProduct(r, byProduct.get(r.id) ?? []))
 }
 
-export function getProduct(storeId: string, handle: string): ProductRecord | undefined {
-  const row = useDb().prepare('SELECT * FROM products WHERE store_id = ? AND handle = ?').get(storeId, handle) as ProductRow | undefined
+export async function getProduct(storeId: string, handle: string): Promise<ProductRecord | undefined> {
+  const [row] = await useDb().select().from(products)
+    .where(and(eq(products.storeId, storeId), eq(products.handle, handle)))
+    .limit(1)
   if (!row) return undefined
-  return mapProduct(row, variantsFor([row.id]).get(row.id) ?? [])
-}
 
-export function getProductById(id: string): ProductRecord | undefined {
-  const row = useDb().prepare('SELECT * FROM products WHERE id = ?').get(id) as ProductRow | undefined
-  if (!row) return undefined
-  return mapProduct(row, variantsFor([row.id]).get(row.id) ?? [])
+  const byProduct = await variantsFor([row.id])
+  return mapProduct(row, byProduct.get(row.id) ?? [])
 }
 
 export interface ProductInput {
@@ -339,188 +282,262 @@ export interface ProductInput {
   variants?: Array<{ title: string, priceCents?: number | null, sku?: string | null, inventory?: number }>
 }
 
-export function upsertProduct(storeId: string, input: ProductInput): ProductRecord {
+export async function upsertProduct(storeId: string, input: ProductInput): Promise<ProductRecord> {
   const db = useDb()
-  const existing = getProduct(storeId, input.handle)
+  const existing = await getProduct(storeId, input.handle)
   const id = existing?.id ?? newId()
 
-  const row: ProductRow = {
+  await db.insert(products).values({
     id,
-    store_id: storeId,
+    storeId,
     handle: input.handle,
     title: input.title,
     description: input.description ?? existing?.description ?? '',
-    price_cents: input.priceCents,
-    compare_at_cents: input.compareAtCents ?? null,
+    priceCents: input.priceCents,
+    compareAtCents: input.compareAtCents ?? null,
     image: input.image ?? existing?.image ?? null,
     status: input.status ?? existing?.status ?? 'active',
     inventory: input.inventory ?? existing?.inventory ?? 100,
-    tags: JSON.stringify(input.tags ?? existing?.tags ?? []),
+    tags: input.tags ?? existing?.tags ?? [],
     collection: input.collection ?? existing?.collection ?? null,
-    created_at: existing?.createdAt ?? now(),
-  }
-
-  db.prepare(
-    `INSERT INTO products (id, store_id, handle, title, description, price_cents, compare_at_cents,
-       image, status, inventory, tags, collection, created_at)
-     VALUES (@id, @store_id, @handle, @title, @description, @price_cents, @compare_at_cents,
-       @image, @status, @inventory, @tags, @collection, @created_at)
-     ON CONFLICT (store_id, handle) DO UPDATE SET
-       title = @title, description = @description, price_cents = @price_cents,
-       compare_at_cents = @compare_at_cents, image = @image, status = @status,
-       inventory = @inventory, tags = @tags, collection = @collection`,
-  ).run(row)
+  }).onConflictDoUpdate({
+    target: [products.storeId, products.handle],
+    set: {
+      title: input.title,
+      description: input.description ?? existing?.description ?? '',
+      priceCents: input.priceCents,
+      compareAtCents: input.compareAtCents ?? null,
+      image: input.image ?? existing?.image ?? null,
+      status: input.status ?? existing?.status ?? 'active',
+      inventory: input.inventory ?? existing?.inventory ?? 100,
+      tags: input.tags ?? existing?.tags ?? [],
+      collection: input.collection ?? existing?.collection ?? null,
+    },
+  })
 
   if (input.variants) {
-    db.prepare('DELETE FROM variants WHERE product_id = ?').run(id)
-    const stmt = db.prepare(
-      `INSERT INTO variants (id, product_id, title, price_cents, sku, inventory, position)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    )
-    input.variants.forEach((v, i) => {
-      stmt.run(newId(), id, v.title, v.priceCents ?? null, v.sku ?? null, v.inventory ?? 50, i)
-    })
+    await db.delete(variants).where(eq(variants.productId, id))
+    if (input.variants.length) {
+      await db.insert(variants).values(input.variants.map((v, i) => ({
+        id: newId(),
+        productId: id,
+        title: v.title,
+        priceCents: v.priceCents ?? null,
+        sku: v.sku ?? null,
+        inventory: v.inventory ?? 50,
+        position: i,
+      })))
+    }
   }
 
-  touchStore(storeId)
-  return getProduct(storeId, input.handle)!
+  await touchStore(storeId)
+  return (await getProduct(storeId, input.handle))!
 }
 
-export function deleteProduct(storeId: string, handle: string): boolean {
-  const res = useDb().prepare('DELETE FROM products WHERE store_id = ? AND handle = ?').run(storeId, handle)
-  touchStore(storeId)
-  return res.changes > 0
+export async function deleteProduct(storeId: string, handle: string): Promise<boolean> {
+  const rows = await useDb().delete(products)
+    .where(and(eq(products.storeId, storeId), eq(products.handle, handle)))
+    .returning({ id: products.id })
+  await touchStore(storeId)
+  return rows.length > 0
 }
 
-export function decrementInventory(productId: string, variantId: string | null, qty: number): void {
+export async function decrementInventory(productId: string, variantId: string | null, qty: number): Promise<void> {
   const db = useDb()
   if (variantId) {
-    db.prepare('UPDATE variants SET inventory = MAX(0, inventory - ?) WHERE id = ?').run(qty, variantId)
+    await db.update(variants)
+      .set({ inventory: sql`GREATEST(0, ${variants.inventory} - ${qty})` })
+      .where(eq(variants.id, variantId))
   }
-  db.prepare('UPDATE products SET inventory = MAX(0, inventory - ?) WHERE id = ?').run(qty, productId)
+  await db.update(products)
+    .set({ inventory: sql`GREATEST(0, ${products.inventory} - ${qty})` })
+    .where(eq(products.id, productId))
 }
 
-/* ------------------------------------------------------------------ carts */
+/* ----------------------------------------------------------------- carts */
 
-interface CartRow { id: string, store_id: string, token: string, lines: string, created_at: string, updated_at: string }
-
-export function getOrCreateCart(storeId: string, token: string | undefined): { token: string, lines: CartLine[] } {
+export async function getOrCreateCart(
+  storeId: string,
+  token: string | undefined,
+): Promise<{ token: string, lines: CartLine[] }> {
   const db = useDb()
+
   if (token) {
-    const row = db.prepare('SELECT * FROM carts WHERE token = ? AND store_id = ?').get(token, storeId) as CartRow | undefined
-    if (row) return { token: row.token, lines: json<CartLine[]>(row.lines, []) }
+    const [row] = await db.select().from(carts)
+      .where(and(eq(carts.token, token), eq(carts.storeId, storeId)))
+      .limit(1)
+    if (row) return { token: row.token, lines: row.lines }
   }
+
   const fresh = randomUUID().replace(/-/g, '')
-  db.prepare(
-    'INSERT INTO carts (id, store_id, token, lines, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-  ).run(newId(), storeId, fresh, '[]', now(), now())
+  await db.insert(carts).values({ id: newId(), storeId, token: fresh, lines: [] })
   return { token: fresh, lines: [] }
 }
 
-export function saveCart(storeId: string, token: string, lines: CartLine[]): void {
-  useDb().prepare('UPDATE carts SET lines = ?, updated_at = ? WHERE token = ? AND store_id = ?')
-    .run(JSON.stringify(lines), now(), token, storeId)
+export async function saveCart(storeId: string, token: string, lines: CartLine[]): Promise<void> {
+  await useDb().update(carts)
+    .set({ lines, updatedAt: new Date() })
+    .where(and(eq(carts.token, token), eq(carts.storeId, storeId)))
 }
 
-export function clearCart(storeId: string, token: string): void {
-  saveCart(storeId, token, [])
-}
+export const clearCart = (storeId: string, token: string) => saveCart(storeId, token, [])
 
-/* ----------------------------------------------------------------- orders */
+/* ---------------------------------------------------------------- orders */
 
-interface OrderRow {
-  id: string, store_id: string, number: number, email: string, status: string,
-  lines: string, totals: string, currency: string, shipping: string,
-  payment_ref: string, created_at: string
-}
+type OrderRow = typeof orders.$inferSelect
 
-function mapOrder(row: OrderRow): OrderRecord {
-  return {
-    id: row.id,
-    storeId: row.store_id,
-    number: row.number,
-    email: row.email,
-    status: row.status as OrderRecord['status'],
-    lines: json<OrderRecord['lines']>(row.lines, []),
-    totals: json<OrderRecord['totals']>(row.totals, { subtotalCents: 0, shippingCents: 0, taxCents: 0, totalCents: 0 }),
-    currency: row.currency,
-    shipping: json<OrderRecord['shipping']>(row.shipping, {
-      name: '', address1: '', city: '', region: '', postal: '', country: '',
-    }),
-    paymentRef: row.payment_ref,
-    createdAt: row.created_at,
-  }
-}
+const mapOrder = (row: OrderRow): OrderRecord => ({
+  id: row.id,
+  storeId: row.storeId,
+  number: row.number,
+  email: row.email,
+  status: row.status,
+  lines: row.lines,
+  totals: row.totals,
+  currency: row.currency,
+  shipping: row.shipping,
+  paymentRef: row.paymentRef,
+  createdAt: row.createdAt.toISOString(),
+})
 
-export function createOrder(order: Omit<OrderRecord, 'id' | 'number' | 'createdAt'>): OrderRecord {
+export async function createOrder(
+  order: Omit<OrderRecord, 'id' | 'number' | 'createdAt'>,
+): Promise<OrderRecord> {
   const db = useDb()
-  const next = db.prepare('SELECT COALESCE(MAX(number), 1000) + 1 AS n FROM orders WHERE store_id = ?')
-    .get(order.storeId) as { n: number }
 
-  const row: OrderRow = {
-    id: newId(),
-    store_id: order.storeId,
-    number: next.n,
-    email: order.email,
-    status: order.status,
-    lines: JSON.stringify(order.lines),
-    totals: JSON.stringify(order.totals),
-    currency: order.currency,
-    shipping: JSON.stringify(order.shipping),
-    payment_ref: order.paymentRef,
-    created_at: now(),
+  // Order numbers are sequential per store, which means two concurrent
+  // checkouts can read the same MAX(number) before either commits. The unique
+  // index on (store_id, number) is what actually guarantees uniqueness; this
+  // loop just picks a new number when it loses the race.
+  //
+  // `onConflictDoNothing` rather than catching an exception: the driver wraps
+  // Postgres errors, so matching on the message is fragile — an empty result
+  // is an unambiguous signal.
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const [current] = await db
+      .select({ next: sql<number>`COALESCE(MAX(${orders.number}), 1000) + 1` })
+      .from(orders)
+      .where(eq(orders.storeId, order.storeId))
+
+    const [row] = await db.insert(orders).values({
+      id: newId(),
+      storeId: order.storeId,
+      number: current?.next ?? 1001,
+      email: order.email,
+      status: order.status,
+      lines: order.lines,
+      totals: order.totals,
+      currency: order.currency,
+      shipping: order.shipping,
+      paymentRef: order.paymentRef,
+    })
+      .onConflictDoNothing({ target: [orders.storeId, orders.number] })
+      .returning()
+
+    if (row) return mapOrder(row)
+
+    // Small jittered backoff so a burst of checkouts fans out instead of
+    // colliding on the same number repeatedly.
+    await new Promise(resolve => setTimeout(resolve, 5 + Math.random() * 20))
   }
-  db.prepare(
-    `INSERT INTO orders (id, store_id, number, email, status, lines, totals, currency, shipping, payment_ref, created_at)
-     VALUES (@id, @store_id, @number, @email, @status, @lines, @totals, @currency, @shipping, @payment_ref, @created_at)`,
-  ).run(row)
-  return mapOrder(row)
+
+  throw createError({
+    statusCode: 503,
+    statusMessage: 'The store is busy right now — please try again in a moment.',
+  })
 }
 
-export function listOrders(storeId: string): OrderRecord[] {
-  const rows = useDb().prepare('SELECT * FROM orders WHERE store_id = ? ORDER BY number DESC').all(storeId) as OrderRow[]
+export async function listOrders(storeId: string): Promise<OrderRecord[]> {
+  const rows = await useDb().select().from(orders)
+    .where(eq(orders.storeId, storeId))
+    .orderBy(desc(orders.number))
   return rows.map(mapOrder)
 }
 
-export function getOrder(storeId: string, id: string): OrderRecord | undefined {
-  const row = useDb().prepare('SELECT * FROM orders WHERE store_id = ? AND id = ?').get(storeId, id) as OrderRow | undefined
+export async function getOrder(storeId: string, id: string): Promise<OrderRecord | undefined> {
+  const [row] = await useDb().select().from(orders)
+    .where(and(eq(orders.storeId, storeId), eq(orders.id, id)))
+    .limit(1)
   return row ? mapOrder(row) : undefined
 }
 
-export function setOrderStatus(storeId: string, id: string, status: OrderRecord['status']): OrderRecord | undefined {
-  useDb().prepare('UPDATE orders SET status = ? WHERE store_id = ? AND id = ?').run(status, storeId, id)
-  return getOrder(storeId, id)
+export async function setOrderStatus(
+  storeId: string,
+  id: string,
+  status: OrderRecord['status'],
+): Promise<OrderRecord | undefined> {
+  const [row] = await useDb().update(orders)
+    .set({ status })
+    .where(and(eq(orders.storeId, storeId), eq(orders.id, id)))
+    .returning()
+  return row ? mapOrder(row) : undefined
 }
 
-/* ------------------------------------------------------------------- chat */
+/* ------------------------------------------------------------------ chat */
 
-interface ChatRow { id: string, store_id: string, role: string, content: string, actions: string, created_at: string }
+export async function appendChat(
+  storeId: string,
+  role: 'user' | 'assistant',
+  content: string,
+  actions: ChatMessageRecord['actions'] = [],
+): Promise<ChatMessageRecord> {
+  const [row] = await useDb().insert(chatMessages)
+    .values({ id: newId(), storeId, role, content, actions })
+    .returning()
 
-export function appendChat(storeId: string, role: 'user' | 'assistant', content: string, actions: ChatMessageRecord['actions'] = []): ChatMessageRecord {
-  const row: ChatRow = {
-    id: newId(),
-    store_id: storeId,
+  return {
+    id: row!.id,
+    storeId,
     role,
     content,
-    actions: JSON.stringify(actions),
-    created_at: now(),
+    actions,
+    createdAt: row!.createdAt.toISOString(),
   }
-  useDb().prepare(
-    'INSERT INTO chat_messages (id, store_id, role, content, actions, created_at) VALUES (@id, @store_id, @role, @content, @actions, @created_at)',
-  ).run(row)
-  return { id: row.id, storeId, role, content, actions, createdAt: row.created_at }
 }
 
-export function listChat(storeId: string, limit = 100): ChatMessageRecord[] {
-  const rows = useDb().prepare(
-    'SELECT * FROM chat_messages WHERE store_id = ? ORDER BY created_at ASC LIMIT ?',
-  ).all(storeId, limit) as ChatRow[]
-  return rows.map(r => ({
-    id: r.id,
-    storeId: r.store_id,
-    role: r.role as 'user' | 'assistant',
-    content: r.content,
-    actions: json<ChatMessageRecord['actions']>(r.actions, []),
-    createdAt: r.created_at,
+export async function listChat(storeId: string, limit = 100): Promise<ChatMessageRecord[]> {
+  const rows = await useDb().select().from(chatMessages)
+    .where(eq(chatMessages.storeId, storeId))
+    .orderBy(asc(chatMessages.createdAt))
+    .limit(limit)
+
+  return rows.map(row => ({
+    id: row.id,
+    storeId: row.storeId,
+    role: row.role,
+    content: row.content,
+    actions: row.actions,
+    createdAt: row.createdAt.toISOString(),
   }))
+}
+
+/* ------------------------------------------------------------ membership */
+
+export interface OrgMembership {
+  orgId: string
+  orgName: string
+  orgSlug: string
+  role: Role
+}
+
+export async function listOrgsForUser(userId: string): Promise<OrgMembership[]> {
+  const rows = await useDb()
+    .select({
+      orgId: organizations.id,
+      orgName: organizations.name,
+      orgSlug: organizations.slug,
+      role: memberships.role,
+    })
+    .from(memberships)
+    .innerJoin(organizations, eq(organizations.id, memberships.orgId))
+    .where(eq(memberships.userId, userId))
+    .orderBy(asc(organizations.createdAt))
+  return rows
+}
+
+export async function getMembership(userId: string, orgId: string): Promise<Role | undefined> {
+  const [row] = await useDb().select({ role: memberships.role }).from(memberships)
+    .where(and(eq(memberships.userId, userId), eq(memberships.orgId, orgId)))
+    .limit(1)
+  return row?.role
 }

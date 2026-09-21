@@ -152,7 +152,7 @@ export interface StoreSettings {
 
 export interface StoreRecord {
   id: string
-  userId: string
+  orgId: string
   name: string
   slug: string
   status: 'draft' | 'published'

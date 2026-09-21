@@ -1,14 +1,19 @@
 import { listChat, listPages, listProducts } from '../../../db/repo'
-import { requireOwnedStore } from '../../../utils/store-guard'
+import { requireStoreAccess } from '../../../utils/store-guard'
 import { isAiConfigured } from '../../../ai/agent'
+import { usageFor } from '../../../billing/usage'
+import { planFor } from '../../../billing/plans'
 
-export default defineEventHandler((event) => {
-  const store = requireOwnedStore(event)
-  return {
-    store,
-    pages: listPages(store.id),
-    products: listProducts(store.id),
-    messages: listChat(store.id),
-    aiConfigured: isAiConfigured(),
-  }
+export default defineEventHandler(async (event) => {
+  const { store, role } = await requireStoreAccess(event)
+
+  const [pages, products, messages, usage, plan] = await Promise.all([
+    listPages(store.id),
+    listProducts(store.id),
+    listChat(store.id),
+    usageFor(store.orgId),
+    planFor(store.orgId),
+  ])
+
+  return { store, pages, products, messages, usage, plan, role, aiConfigured: isAiConfigured() }
 })

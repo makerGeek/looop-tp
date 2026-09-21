@@ -1,8 +1,8 @@
-import { loadStorefront, buildPayload } from '../../../utils/storefront'
+import { buildPayload, loadStorefront } from '../../../utils/storefront'
 
-export default defineEventHandler((event) => {
+export default defineEventHandler(async (event) => {
   const slug = getRouterParam(event, 'slug')!
-  const store = loadStorefront(event, slug)
+  const store = await loadStorefront(event, slug)
   const path = String(getQuery(event).path ?? '/') || '/'
   return buildPayload(store, path)
 })

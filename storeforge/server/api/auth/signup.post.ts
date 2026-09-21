@@ -1,5 +1,4 @@
-import { createUser, findUserByEmail } from '../../db/repo'
-import { hashPassword, startSession } from '../../utils/auth'
+import { findUserByEmail, registerUser, startSession } from '../../utils/auth'
 
 export default defineEventHandler(async (event) => {
   const body = await readBody<{ email?: string, password?: string, name?: string }>(event)
@@ -14,12 +13,12 @@ export default defineEventHandler(async (event) => {
   if (password.length < 8) {
     throw createError({ statusCode: 400, statusMessage: 'Password must be at least 8 characters' })
   }
-  if (findUserByEmail(email)) {
+  if (await findUserByEmail(email)) {
     throw createError({ statusCode: 409, statusMessage: 'An account with that email already exists' })
   }
 
-  const user = createUser(email, name, hashPassword(password))
-  startSession(event, user.id)
+  const { user, orgId } = await registerUser(email, name, password)
+  await startSession(event, user.id)
 
-  return { id: user.id, email: user.email, name: user.name }
+  return { id: user.id, email: user.email, name: user.name, orgId }
 })

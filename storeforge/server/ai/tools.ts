@@ -219,46 +219,49 @@ export interface ToolOutcome {
 type AnyRecord = Record<string, any>
 
 /** Runs one tool call against a store. Throws only on programmer error; tool-level problems come back as `{error}`. */
-export function executeTool(storeId: string, name: string, rawInput: unknown): ToolOutcome {
+export async function executeTool(storeId: string, name: string, rawInput: unknown): Promise<ToolOutcome> {
   const input = (rawInput ?? {}) as AnyRecord
 
   switch (name) {
     case 'get_store_state':
-      return { result: readState(storeId) }
+      return { result: await readState(storeId) }
     case 'set_brand_and_theme':
-      return setBrandAndTheme(storeId, input)
+      return await setBrandAndTheme(storeId, input)
     case 'upsert_page':
-      return doUpsertPage(storeId, input)
+      return await doUpsertPage(storeId, input)
     case 'delete_page':
-      return doDeletePage(storeId, input)
+      return await doDeletePage(storeId, input)
     case 'add_products':
-      return doAddProducts(storeId, input)
+      return await doAddProducts(storeId, input)
     case 'delete_product':
-      return doDeleteProduct(storeId, input)
+      return await doDeleteProduct(storeId, input)
     case 'update_settings':
-      return doUpdateSettings(storeId, input)
+      return await doUpdateSettings(storeId, input)
     case 'publish_store':
-      return doPublish(storeId, input)
+      return await doPublish(storeId, input)
     default:
       return { result: { error: `Unknown tool "${name}"` } }
   }
 }
 
-function readState(storeId: string) {
-  const store = getStore(storeId)
+async function readState(storeId: string) {
+  const store = await getStore(storeId)
   if (!store) return { error: 'Store not found' }
+
+  const [pageList, productList] = await Promise.all([listPages(storeId), listProducts(storeId)])
+
   return {
     brand: store.brand,
     theme: store.theme,
     settings: store.settings,
     status: store.status,
-    pages: listPages(storeId).map(p => ({
+    pages: pageList.map(p => ({
       path: p.path,
       title: p.title,
       navLabel: p.navLabel,
       sections: p.sections.map(s => ({ type: s.type, heading: (s as AnyRecord).heading })),
     })),
-    products: listProducts(storeId).map(p => ({
+    products: productList.map(p => ({
       handle: p.handle,
       title: p.title,
       price: (p.priceCents / 100).toFixed(2),
@@ -269,8 +272,8 @@ function readState(storeId: string) {
   }
 }
 
-function setBrandAndTheme(storeId: string, input: AnyRecord): ToolOutcome {
-  const store = getStore(storeId)
+async function setBrandAndTheme(storeId: string, input: AnyRecord): Promise<ToolOutcome> {
+  const store = await getStore(storeId)
   if (!store) return { result: { error: 'Store not found' } }
 
   const theme: Theme = {
@@ -291,7 +294,7 @@ function setBrandAndTheme(storeId: string, input: AnyRecord): ToolOutcome {
     announcement: str(input.announcement) ?? store.brand.announcement,
   }
 
-  updateStore(storeId, { brand, theme, name: brand.name })
+  await updateStore(storeId, { brand, theme, name: brand.name })
 
   return {
     result: { ok: true, brand, theme },
@@ -304,7 +307,7 @@ function setBrandAndTheme(storeId: string, input: AnyRecord): ToolOutcome {
   }
 }
 
-function doUpsertPage(storeId: string, input: AnyRecord): ToolOutcome {
+async function doUpsertPage(storeId: string, input: AnyRecord): Promise<ToolOutcome> {
   const path = normalizePath(str(input.path) ?? '/')
   const title = str(input.title) ?? 'Untitled page'
   const rawSections = Array.isArray(input.sections) ? input.sections : []
@@ -312,7 +315,7 @@ function doUpsertPage(storeId: string, input: AnyRecord): ToolOutcome {
     .map((s, i) => normalizeSection(s as AnyRecord, i))
     .filter((s): s is Section => s !== null)
 
-  const page = upsertPage({
+  const page = await upsertPage({
     storeId,
     path,
     title,
@@ -332,17 +335,17 @@ function doUpsertPage(storeId: string, input: AnyRecord): ToolOutcome {
   }
 }
 
-function doDeletePage(storeId: string, input: AnyRecord): ToolOutcome {
+async function doDeletePage(storeId: string, input: AnyRecord): Promise<ToolOutcome> {
   const path = normalizePath(str(input.path) ?? '')
   if (path === '/') return { result: { error: 'The home page cannot be deleted' } }
-  deletePage(storeId, path)
+  await deletePage(storeId, path)
   return {
     result: { ok: true },
     action: { tool: 'delete_page', summary: `Removed ${path}` },
   }
 }
 
-function doAddProducts(storeId: string, input: AnyRecord): ToolOutcome {
+async function doAddProducts(storeId: string, input: AnyRecord): Promise<ToolOutcome> {
   const items = Array.isArray(input.products) ? input.products : []
   if (!items.length) return { result: { error: 'No products supplied' } }
 
@@ -356,7 +359,7 @@ function doAddProducts(storeId: string, input: AnyRecord): ToolOutcome {
     const compareRaw = raw.compareAtPrice ?? raw.compareAt
     const compareAtCents = compareRaw != null ? parseMoney(compareRaw) : null
 
-    upsertProduct(storeId, {
+    await upsertProduct(storeId, {
       handle,
       title,
       description: str(raw.description) ?? '',
@@ -392,18 +395,18 @@ function doAddProducts(storeId: string, input: AnyRecord): ToolOutcome {
   }
 }
 
-function doDeleteProduct(storeId: string, input: AnyRecord): ToolOutcome {
+async function doDeleteProduct(storeId: string, input: AnyRecord): Promise<ToolOutcome> {
   const handle = str(input.handle)
   if (!handle) return { result: { error: 'handle is required' } }
-  const removed = deleteProduct(storeId, handle)
+  const removed = await deleteProduct(storeId, handle)
   return {
     result: { ok: removed, removed },
     action: removed ? { tool: 'delete_product', summary: `Removed product “${handle}”` } : undefined,
   }
 }
 
-function doUpdateSettings(storeId: string, input: AnyRecord): ToolOutcome {
-  const store = getStore(storeId)
+async function doUpdateSettings(storeId: string, input: AnyRecord): Promise<ToolOutcome> {
+  const store = await getStore(storeId)
   if (!store) return { result: { error: 'Store not found' } }
 
   const s = store.settings
@@ -419,16 +422,16 @@ function doUpdateSettings(storeId: string, input: AnyRecord): ToolOutcome {
     socialLinks: normalizeLinks(input.socialLinks) ?? s.socialLinks,
   }
 
-  updateStore(storeId, { settings })
+  await updateStore(storeId, { settings })
   return {
     result: { ok: true, settings },
     action: { tool: 'update_settings', summary: 'Updated store settings' },
   }
 }
 
-function doPublish(storeId: string, input: AnyRecord): ToolOutcome {
+async function doPublish(storeId: string, input: AnyRecord): Promise<ToolOutcome> {
   const published = input.published !== false
-  const store = updateStore(storeId, { status: published ? 'published' : 'draft' })
+  const store = await updateStore(storeId, { status: published ? 'published' : 'draft' })
   return {
     result: { ok: true, status: store?.status },
     action: {

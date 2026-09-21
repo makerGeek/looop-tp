@@ -1,6 +1,6 @@
 import { endSession } from '../../utils/auth'
 
-export default defineEventHandler((event) => {
-  endSession(event)
+export default defineEventHandler(async (event) => {
+  await endSession(event)
   return { ok: true }
 })
