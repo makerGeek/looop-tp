@@ -35,7 +35,7 @@ export async function* runFallbackPlanner(
 
   if (intent.kind === 'build') {
     const kit = matchNiche(userMessage)
-    const name = deriveName(userMessage, kit)
+    const name = deriveName(userMessage, kit, store.name)
 
     for (const step of buildSteps(store, kit, name)) {
       const { action } = await executeTool(store.id, step.tool, step.input)
@@ -147,13 +147,23 @@ function classify(message: string, isEmpty: boolean): Intent {
   return { kind: 'unsupported', label: 'no local handler for this request' }
 }
 
-/** Pulls a plausible brand name out of the prompt, or falls back to the kit's. */
-function deriveName(message: string, kit: NicheKit): string {
+/**
+ * Works out what to call the store.
+ *
+ * A name in the prompt wins, then whatever the merchant already typed when
+ * creating the store — renaming a store they deliberately named, while its URL
+ * keeps the original slug, is worse than a duller name. The kit's suggestion is
+ * only for stores still on the placeholder name.
+ */
+function deriveName(message: string, kit: NicheKit, currentName: string): string {
   const quoted = message.match(/["“']([^"”']{2,40})["”']/)
   if (quoted?.[1]) return titleCase(quoted[1])
 
   const called = message.match(/\b(?:called|named)\s+([A-Za-z0-9&'’\- ]{2,40})/i)
   if (called?.[1]) return titleCase(called[1].replace(/\s+(that|which|who|and|selling|with).*$/i, '').trim())
+
+  const named = currentName.trim()
+  if (named && !/^untitled store$/i.test(named)) return named
 
   return kit.nameParts.join(' ')
 }

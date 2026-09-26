@@ -159,3 +159,48 @@ describe('password reset', () => {
     }))).toBe(400)
   })
 })
+
+describe('store naming', () => {
+  it('keeps the name the merchant chose instead of renaming the store', async () => {
+    const c = client()
+    await signUp(c, uniqueEmail('naming'))
+
+    const store = await c.json<{ id: string, slug: string }>('/api/stores', post({ name: 'Ember & Oak' }))
+    const build = await c.raw(`/api/stores/${store.id}/build`, post({
+      message: 'a small-batch ceramics studio selling hand-thrown mugs and bowls',
+    }))
+    await build.text()
+
+    // The slug is derived from the original name, so renaming the store would
+    // leave the two permanently out of step.
+    const after = await c.json<{ store: { name: string, slug: string } }>(`/api/stores/${store.id}`)
+    expect(after.store.name).toBe('Ember & Oak')
+    expect(after.store.slug).toBe('ember-oak')
+  })
+
+  it('still suggests a name when the store is left on the placeholder', async () => {
+    const c = client()
+    await signUp(c, uniqueEmail('placeholder'))
+
+    const store = await c.json<{ id: string }>('/api/stores', post({ name: 'Untitled store' }))
+    const build = await c.raw(`/api/stores/${store.id}/build`, post({ message: 'a specialty coffee roaster' }))
+    await build.text()
+
+    const after = await c.json<{ store: { name: string } }>(`/api/stores/${store.id}`)
+    expect(after.store.name).not.toBe('Untitled store')
+  })
+
+  it('prefers a name given in the prompt over both', async () => {
+    const c = client()
+    await signUp(c, uniqueEmail('quoted'))
+
+    const store = await c.json<{ id: string }>('/api/stores', post({ name: 'Placeholder Co' }))
+    const build = await c.raw(`/api/stores/${store.id}/build`, post({
+      message: 'a coffee roaster called Northbound Beans',
+    }))
+    await build.text()
+
+    const after = await c.json<{ store: { name: string } }>(`/api/stores/${store.id}`)
+    expect(after.store.name).toBe('Northbound Beans')
+  })
+})
