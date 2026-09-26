@@ -20,10 +20,18 @@ const SUITE: { name: string; fen: string; best: string[]; note: string }[] = [
     note: 'must not lose material',
   },
   {
-    name: 'win a piece with a fork',
-    fen: '4k3/8/8/3p4/8/8/2N5/4K3 w - - 0 1',
-    best: ['c2e3', 'c2b4', 'c2d4'],
-    note: 'knight activity',
+    // Nf7+ forks the king on h8 and the rook on d8, and f7 is undefended —
+    // verified against chess.js before being used as an expectation.
+    name: 'win the rook with a fork',
+    fen: '3r3k/8/8/6N1/8/8/8/6K1 w - - 0 1',
+    best: ['g5f7'],
+    note: 'knight fork',
+  },
+  {
+    name: 'see a mate in two',
+    fen: '6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1',
+    best: ['a1a8'],
+    note: 'back rank, forced',
   },
 ];
 

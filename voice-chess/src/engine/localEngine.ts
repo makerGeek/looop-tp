@@ -1,6 +1,6 @@
 import { Chess } from 'chess.js';
 
-import type { PieceSymbol } from '@/chess/types';
+import type { PieceSymbol, Square } from '@/chess/types';
 import type { ChessEngine, SearchRequest, SearchResult } from './types';
 
 /**
@@ -93,7 +93,17 @@ const MATE_SCORE = 100_000;
  * That single omission was the difference between an opponent that feels weak
  * and one that feels broken.
  */
-const MAX_QUIESCENCE_PLY = 6;
+const MAX_QUIESCENCE_PLY = 4;
+
+/**
+ * How long the search may hold the thread before handing it back.
+ *
+ * The engine runs on the UI thread, so whatever happens between two yields is
+ * a frozen interface. Yielding only between root moves left single blocks of
+ * ~200ms here and far worse on a phone. Slicing on elapsed time instead keeps
+ * every block inside a frame's budget.
+ */
+const SLICE_MS = 8;
 
 export class LocalEngine implements ChessEngine {
   readonly kind = 'builtin' as const;
@@ -111,6 +121,8 @@ export class LocalEngine implements ChessEngine {
     const deadline = Date.now() + Math.max(120, request.movetimeMs);
     const maxDepth = depthForSkill(request.skill);
 
+    // One verbose call per iteration, not per node: the root is where the
+    // from/to/promotion fields are actually needed, to build the UCI reply.
     let rootMoves = chess.moves({ verbose: true });
     if (rootMoves.length === 0) throw new Error('No legal moves to search');
 
@@ -124,16 +136,17 @@ export class LocalEngine implements ChessEngine {
       const iteration: typeof scored = [];
       let ranOut = false;
 
+      const slice = createSlicer();
+
       for (const move of rootMoves) {
         if (this.cancelled) throw new Error('Search cancelled');
 
         chess.move(move.san);
-        const score = -negamax(chess, depth - 1, -Infinity, Infinity, deadline);
+        const score = -(await negamaxSliced(chess, depth - 1, -Infinity, Infinity, deadline, slice));
         chess.undo();
         iteration.push({ move, score });
 
-        // Give the UI thread a chance between root moves.
-        await yieldToEventLoop();
+        await slice();
         if (Date.now() > deadline) {
           ranOut = true;
           break;
@@ -194,19 +207,84 @@ function depthForSkill(skill: number): number {
   return 4;
 }
 
+/**
+ * Inner nodes use `chess.moves()` (SAN strings), never `moves({ verbose: true })`.
+ *
+ * Verbose generation builds a `Move` object per move, and each one computes the
+ * FEN before and after itself — measured at ~4ms per call against ~190µs for
+ * the plain list, a 22x difference. At 240 nodes per second the search both
+ * played badly and blocked the UI thread for milliseconds at a time. Everything
+ * the search needs — capture, promotion, destination — is recoverable from the
+ * SAN string plus one cheap board lookup.
+ */
+/**
+ * Hands the thread back whenever the current slice is spent.
+ *
+ * Returns a function rather than reading a module-level clock so concurrent
+ * searches — a hint request landing mid-turn, say — cannot disturb each other.
+ */
+function createSlicer(): () => Promise<void> {
+  let last = Date.now();
+  return async () => {
+    if (Date.now() - last < SLICE_MS) return;
+    await yieldToEventLoop();
+    last = Date.now();
+  };
+}
+
+/**
+ * The top plies of the search, driven asynchronously so the UI keeps breathing.
+ *
+ * Every full-width ply is async; only the quiescence tail below them runs
+ * synchronously, and that is depth-capped so it cannot run away.
+ */
+async function negamaxSliced(
+  chess: Chess,
+  depth: number,
+  alpha: number,
+  beta: number,
+  deadline: number,
+  slice: () => Promise<void>
+): Promise<number> {
+  if (depth <= 0) return negamax(chess, depth, alpha, beta, deadline);
+  if (Date.now() > deadline) return evaluate(chess);
+
+  const moves = chess.moves();
+  if (moves.length === 0) return chess.inCheck() ? -MATE_SCORE + (10 - depth) : 0;
+
+  let value = -Infinity;
+
+  for (const san of orderSan(chess, moves)) {
+    chess.move(san);
+    const score = -(await negamaxSliced(chess, depth - 1, -beta, -alpha, deadline, slice));
+    chess.undo();
+
+    if (score > value) value = score;
+    if (value > alpha) alpha = value;
+    if (alpha >= beta) break;
+
+    await slice();
+  }
+
+  return value;
+}
+
 function negamax(chess: Chess, depth: number, alpha: number, beta: number, deadline: number): number {
-  if (chess.isCheckmate()) return -MATE_SCORE + (10 - depth);
-  if (chess.isDraw() || chess.isStalemate()) return 0;
-  // Hand off to quiescence rather than evaluating a position that may be in the
-  // middle of a capture sequence.
   if (depth <= 0) return quiesce(chess, alpha, beta, deadline, MAX_QUIESCENCE_PLY);
   if (Date.now() > deadline) return evaluate(chess);
 
-  const moves = orderMoves(chess.moves({ verbose: true }));
+  const moves = chess.moves();
+  // No legal moves is mate or stalemate — far cheaper to detect this way than
+  // to ask `isCheckmate()` and `isStalemate()`, which generate moves again.
+  if (moves.length === 0) return chess.inCheck() ? -MATE_SCORE + (10 - depth) : 0;
+  // Cheap (~1µs) and worth keeping: stops the engine playing on in a position
+  // that can never be won.
+  if (chess.isInsufficientMaterial()) return 0;
+
   let value = -Infinity;
 
-  for (const move of moves) {
-    chess.move(move.san);
+  for (const san of orderSan(chess, moves)) {
+    chess.move(san);
     const score = -negamax(chess, depth - 1, -beta, -alpha, deadline);
     chess.undo();
 
@@ -220,10 +298,10 @@ function negamax(chess: Chess, depth: number, alpha: number, beta: number, deadl
 
 /**
  * Searches on past the depth limit while captures remain, so the engine sees
- * the recapture that a fixed-depth search would miss.
+ * the recapture a fixed-depth search would miss.
  *
- * `standPat` is the score for declining to capture at all: if simply standing
- * still already refutes the opponent's hopes, there is nothing to search.
+ * `standPat` is the score for declining to capture at all: if standing still
+ * already refutes the opponent's hopes, there is nothing to search.
  */
 function quiesce(
   chess: Chess,
@@ -232,20 +310,35 @@ function quiesce(
   deadline: number,
   plyLeft: number
 ): number {
-  if (chess.isCheckmate()) return -MATE_SCORE;
-  if (chess.isDraw() || chess.isStalemate()) return 0;
+  // In check, every legal move is forced, so all of them are searched — and a
+  // position with none is mate. Standing pat while in check would let the
+  // engine "decline" to escape, and dropping terminal detection here entirely
+  // would blind it to mates delivered past the depth limit.
+  if (chess.inCheck()) {
+    const evasions = chess.moves();
+    if (evasions.length === 0) return -MATE_SCORE;
+    if (plyLeft <= 0 || Date.now() > deadline) return evaluate(chess);
+
+    for (const san of orderSan(chess, evasions)) {
+      chess.move(san);
+      const score = -quiesce(chess, -beta, -alpha, deadline, plyLeft - 1);
+      chess.undo();
+      if (score >= beta) return beta;
+      if (score > alpha) alpha = score;
+    }
+    return alpha;
+  }
 
   const standPat = evaluate(chess);
   if (standPat >= beta) return beta;
   if (standPat > alpha) alpha = standPat;
   if (plyLeft <= 0 || Date.now() > deadline) return standPat;
 
-  const noisy = orderMoves(
-    chess.moves({ verbose: true }).filter((move) => move.captured || move.promotion)
-  );
+  const noisy = chess.moves().filter(isNoisy);
+  if (noisy.length === 0) return alpha;
 
-  for (const move of noisy) {
-    chess.move(move.san);
+  for (const san of orderSan(chess, noisy)) {
+    chess.move(san);
     const score = -quiesce(chess, -beta, -alpha, deadline, plyLeft - 1);
     chess.undo();
 
@@ -256,18 +349,49 @@ function quiesce(
   return alpha;
 }
 
-/** Most-valuable-victim / least-valuable-attacker, then promotions. */
-function orderMoves<T extends { piece: PieceSymbol; captured?: PieceSymbol; promotion?: PieceSymbol }>(
-  moves: T[]
-): T[] {
-  return [...moves].sort((a, b) => scoreOrder(b) - scoreOrder(a));
+/** A capture or a promotion — the moves quiescence keeps chasing. */
+function isNoisy(san: string): boolean {
+  return san.includes('x') || san.includes('=');
 }
 
-function scoreOrder(move: { piece: PieceSymbol; captured?: PieceSymbol; promotion?: PieceSymbol }): number {
-  // Taking a queen with a pawn is searched long before taking a pawn with a
-  // queen: the cheap capture is far more likely to be the refutation.
-  const capture = move.captured ? PIECE_VALUE[move.captured] * 10 - PIECE_VALUE[move.piece] : 0;
-  return capture + (move.promotion ? 800 : 0);
+/** Most-valuable-victim / least-valuable-attacker, read straight off the SAN. */
+function orderSan(chess: Chess, sans: string[]): string[] {
+  if (sans.length < 2) return sans;
+  return [...sans].sort((a, b) => sanOrder(chess, b) - sanOrder(chess, a));
+}
+
+function sanOrder(chess: Chess, san: string): number {
+  let score = 0;
+
+  if (san.includes('x')) {
+    const target = destinationOf(san);
+    // En passant leaves the destination empty; the victim is a pawn either way.
+    const victim = target ? (chess.get(target)?.type ?? 'p') : 'p';
+    // Taking a queen with a pawn is searched long before taking a pawn with a
+    // queen: the cheap capture is far more likely to be the refutation.
+    score += PIECE_VALUE[victim] * 10 - PIECE_VALUE[attackerOf(san)];
+  }
+  if (san.includes('=')) score += 800;
+
+  return score;
+}
+
+const PIECE_LETTERS: Record<string, PieceSymbol> = {
+  N: 'n',
+  B: 'b',
+  R: 'r',
+  Q: 'q',
+  K: 'k',
+};
+
+function attackerOf(san: string): PieceSymbol {
+  return PIECE_LETTERS[san[0]!] ?? 'p';
+}
+
+/** The square a SAN move lands on, or `null` for castling. */
+function destinationOf(san: string): Square | null {
+  const match = san.replace(/[+#]/g, '').match(/([a-h][1-8])(?:=[NBRQ])?$/);
+  return (match?.[1] as Square | undefined) ?? null;
 }
 
 /** Static evaluation from the side-to-move's point of view, in centipawns. */

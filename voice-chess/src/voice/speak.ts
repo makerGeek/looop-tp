@@ -5,20 +5,27 @@ import * as Speech from 'expo-speech';
 import { OpenAIError, postJsonForBytes, type OpenAIConfig } from './openaiClient';
 
 /**
- * Text-to-speech with a graceful ladder of fallbacks.
+ * The app's voice.
  *
- * 1. OpenAI speech — warm, natural, and worth the round trip.
- * 2. The on-device voice (`expo-speech`) — instant and works offline.
- * 3. Silence, with the line still shown on screen.
+ * Two properties matter here, and the first version had neither:
  *
- * A failure at any rung silently drops to the next one: losing the network
- * should never cost the player their game.
+ * **Utterances never overlap.** Speaking used to stop whatever was playing and
+ * then go off to synthesise over the network. Two calls close together — your
+ * move confirmed, then the CPU's reply announced — both passed that stop
+ * *before* either had started playing, so nothing was cancelled and both
+ * played at once. Requests are now queued, and each waits for the previous one
+ * to finish.
+ *
+ * **Interrupting really interrupts.** `stopSpeaking()` bumps a generation
+ * counter, so anything queued or mid-synthesis is abandoned rather than
+ * arriving late. That is what makes pressing the mic feel immediate.
  */
 
 export type SpeechVoice = 'alloy' | 'ash' | 'ballad' | 'coral' | 'echo' | 'sage' | 'shimmer' | 'verse';
+export type SpeechRoute = 'openai' | 'device' | 'silent';
 
 export interface SpeakOptions {
-  /** Skip the network hop entirely (used when the player is offline or muted). */
+  /** Skip the network hop entirely (used when offline or muted). */
   offlineOnly?: boolean;
   voice?: SpeechVoice;
   model?: string;
@@ -33,16 +40,19 @@ export const DEFAULT_TTS_INSTRUCTIONS =
   'Speak briefly and warmly, with the easy rhythm of a person thinking aloud. ' +
   'Never spell out punctuation and never sound like an announcer.';
 
+/** Nothing should hold the queue longer than this, whatever the platform does. */
+const MAX_UTTERANCE_MS = 20_000;
+
+/** Bumped by `stopSpeaking`; anything holding a stale value gives up. */
+let generation = 0;
+/** Serialises utterances so they play one after another. */
+let queue: Promise<unknown> = Promise.resolve();
 let currentPlayer: ReturnType<typeof createAudioPlayer> | null = null;
 
-/** Stops whatever the app is currently saying. Safe to call at any time. */
+/** Stops what is playing and abandons anything queued behind it. */
 export async function stopSpeaking(): Promise<void> {
-  try {
-    currentPlayer?.remove();
-  } catch {
-    // The player may already be released; nothing to do.
-  }
-  currentPlayer = null;
+  generation += 1;
+  releasePlayer();
   try {
     await Speech.stop();
   } catch {
@@ -50,40 +60,119 @@ export async function stopSpeaking(): Promise<void> {
   }
 }
 
+function releasePlayer(): void {
+  try {
+    currentPlayer?.remove();
+  } catch {
+    // Already released.
+  }
+  currentPlayer = null;
+}
+
 /**
- * Speaks `text`. Resolves once playback has *started* (not finished), so the
- * caller can keep the UI responsive.
+ * Speaks `text`, after anything already queued. Resolves when this utterance
+ * has finished — callers that do not care can simply not await it.
  */
-export async function speak(
+export function speak(
   text: string,
   config: OpenAIConfig | null,
   options: SpeakOptions = {}
-): Promise<'openai' | 'device' | 'silent'> {
+): Promise<SpeechRoute> {
   const trimmed = text.trim();
-  if (!trimmed) return 'silent';
+  if (!trimmed) return Promise.resolve('silent');
 
-  await stopSpeaking();
+  const mine = generation;
+  const run = queue.then(() => utter(trimmed, mine, config, options));
+  // The queue must survive a failed utterance, so swallow here and let the
+  // caller see the rejection on `run` instead.
+  queue = run.catch(() => undefined);
+  return run;
+}
+
+async function utter(
+  text: string,
+  mine: number,
+  config: OpenAIConfig | null,
+  options: SpeakOptions
+): Promise<SpeechRoute> {
+  // Superseded while waiting our turn.
+  if (mine !== generation) return 'silent';
 
   if (config && !options.offlineOnly) {
     try {
-      const uri = await synthesizeToFile(trimmed, config, options);
+      const uri = await synthesizeToFile(text, config, options);
+      if (mine !== generation) return 'silent';
+
       await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
-      const player = createAudioPlayer(uri);
-      currentPlayer = player;
-      player.play();
+      await playToCompletion(uri, mine);
       return 'openai';
     } catch (error) {
       if (!(error instanceof OpenAIError)) throw error;
-      // fall through to the device voice
+      // Fall through to the device voice.
     }
   }
 
-  try {
-    Speech.speak(trimmed, { rate: options.rate ?? 1.0, pitch: 1.0 });
-    return 'device';
-  } catch {
-    return 'silent';
-  }
+  if (mine !== generation) return 'silent';
+  return speakWithDevice(text, options);
+}
+
+function playToCompletion(uri: string, mine: number): Promise<void> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      try {
+        subscription?.remove();
+      } catch {
+        // Already gone.
+      }
+      if (currentPlayer === player) releasePlayer();
+      resolve();
+    };
+
+    const player = createAudioPlayer(uri);
+    currentPlayer = player;
+
+    const subscription = player.addListener('playbackStatusUpdate', (status) => {
+      if (status.didJustFinish || mine !== generation) finish();
+    });
+
+    // A missed status event must not wedge the queue.
+    const timer = setTimeout(finish, MAX_UTTERANCE_MS);
+
+    try {
+      player.play();
+    } catch {
+      finish();
+    }
+  });
+}
+
+function speakWithDevice(text: string, options: SpeakOptions): Promise<SpeechRoute> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = (route: SpeechRoute) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(route);
+    };
+    const timer = setTimeout(() => done('device'), MAX_UTTERANCE_MS);
+
+    try {
+      Speech.speak(text, {
+        rate: options.rate ?? 1.0,
+        pitch: 1.0,
+        onDone: () => done('device'),
+        onStopped: () => done('silent'),
+        onError: () => done('silent'),
+      });
+    } catch {
+      done('silent');
+    }
+  });
 }
 
 /** Downloads synthesized speech to the cache directory and returns its URI. */
