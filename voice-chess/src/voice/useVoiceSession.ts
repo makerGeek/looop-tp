@@ -70,6 +70,17 @@ export function useVoiceSession(handlers: VoiceSessionHandlers) {
 
   // Callers rebuild these callbacks every render; holding them in a ref keeps
   // the recorder callbacks stable without a dependency treadmill.
+  /**
+   * Recorder lifecycle, tracked in refs rather than state.
+   *
+   * `start` awaits a permission dialog, and on Android that dialog eats the
+   * finger-release that would normally stop the recording. Reading `state`
+   * inside these async callbacks is both stale and too late, so the phase is
+   * kept somewhere that async code can read synchronously.
+   */
+  const phase = useRef<'idle' | 'starting' | 'listening'>('idle');
+  const stopRequested = useRef(false);
+
   const handlersRef = useRef(handlers);
   useEffect(() => {
     handlersRef.current = handlers;
@@ -175,35 +186,72 @@ export function useVoiceSession(handlers: VoiceSessionHandlers) {
   );
 
   const start = useCallback(async () => {
+    // Ignore a second press while the first is still opening the microphone.
+    if (phase.current !== 'idle') return;
+    phase.current = 'starting';
+    stopRequested.current = false;
+
     setError(null);
     await handlersRef.current.silence();
 
     const permission = await requestRecordingPermissionsAsync();
     if (!permission.granted) {
+      phase.current = 'idle';
       setState('unavailable');
       setError('Microphone access is off. Enable it in system settings to talk your moves.');
       return;
     }
 
     if (!config) {
+      phase.current = 'idle';
       setState('unavailable');
       setError('Add an OpenAI key in Settings to use voice. You can still tap or type moves.');
       return;
     }
 
+    // The press is already over — typically the permission dialog swallowed the
+    // release. Opening a recording now would leave one running with nothing to
+    // close it, and the next attempt would fail on an already-busy recorder.
+    if (stopRequested.current) {
+      phase.current = 'idle';
+      setState('idle');
+      return;
+    }
+
     try {
       await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+      // Belt and braces: an interrupted session may still hold the microphone.
+      if (recorder.isRecording) {
+        try {
+          await recorder.stop();
+        } catch {
+          // Nothing to salvage; preparing below will surface any real problem.
+        }
+      }
       await recorder.prepareToRecordAsync();
+      if (stopRequested.current) {
+        phase.current = 'idle';
+        setState('idle');
+        return;
+      }
       recorder.record();
+      phase.current = 'listening';
       setState('listening');
     } catch (cause) {
+      phase.current = 'idle';
       setState('error');
-      setError((cause as Error).message);
+      setError(describeRecorderError(cause));
     }
   }, [config, recorder]);
 
   const stop = useCallback(async () => {
-    if (state !== 'listening') return;
+    // Released before the microphone finished opening: tell `start` to unwind.
+    if (phase.current === 'starting') {
+      stopRequested.current = true;
+      return;
+    }
+    if (phase.current !== 'listening') return;
+    phase.current = 'idle';
 
     try {
       await recorder.stop();
@@ -239,18 +287,20 @@ export function useVoiceSession(handlers: VoiceSessionHandlers) {
     }
     // `handleTranscript` is recreated with the same deps as this callback.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [config, recorder, state, transcriptionModel, chatModel, useModelFallback]);
+  }, [config, recorder, transcriptionModel, chatModel, useModelFallback]);
 
   const cancel = useCallback(async () => {
-    if (state === 'listening') {
+    stopRequested.current = true;
+    if (phase.current === 'listening') {
       try {
         await recorder.stop();
       } catch {
         // ignore
       }
     }
+    phase.current = 'idle';
     setState('idle');
-  }, [recorder, state]);
+  }, [recorder]);
 
   return {
     state,
@@ -265,6 +315,18 @@ export function useVoiceSession(handlers: VoiceSessionHandlers) {
     /** Runs raw text through the full pipeline (used by the type-a-move field). */
     submitText: handleTranscript,
   };
+}
+
+/**
+ * Recorder failures arrive as bare native errors. Keeping the name and message
+ * visible is what makes a bug report from a real device actionable.
+ */
+function describeRecorderError(cause: unknown): string {
+  const error = cause as { name?: string; message?: string } | undefined;
+  const detail = [error?.name, error?.message].filter(Boolean).join(': ');
+  return detail
+    ? `Couldn't start the microphone — ${detail}`
+    : "Couldn't start the microphone. Try again, or tap your move.";
 }
 
 function isPlayersTurn(store: ReturnType<typeof useGameStore.getState>): boolean {

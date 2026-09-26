@@ -18,8 +18,13 @@
  *   - capture the `onmessage` handler the script installs, and use it as the
  *     command channel.
  *
- * Emscripten resolves `stockfish.wasm` relative to the URL of its own script
- * tag, so pointing at the CDN is enough for the WASM binary to load too.
+ * ## Why the `<base>` tag matters
+ * This Emscripten build ships `locateFile: (f) => f`, which *overrides* the
+ * usual script-directory prefixing and hands back the bare name
+ * `stockfish.wasm`. That resolves against the **document** URL, not the
+ * script's — so without a `<base>` pointing at the package directory the WASM
+ * fetch 400s and the engine aborts with "both async and sync fetching of the
+ * wasm failed". Setting the base explicitly is what makes the binary load.
  */
 
 export const DEFAULT_STOCKFISH_URL =
@@ -34,10 +39,18 @@ export interface HarnessMessage {
   payload: string;
 }
 
+/** Directory portion of a script URL, with a trailing slash. */
+export function directoryOf(url: string): string {
+  return url.slice(0, url.lastIndexOf('/') + 1);
+}
+
 export function buildStockfishHarness(primaryUrl = DEFAULT_STOCKFISH_URL): string {
   return `<!DOCTYPE html>
 <html>
-<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /></head>
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+  <base href="${directoryOf(primaryUrl)}" />
+</head>
 <body>
 <script>
 (function () {
