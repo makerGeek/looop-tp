@@ -12,7 +12,7 @@ import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 
 import { LocalEngine } from './localEngine';
 import { StockfishEngine } from './stockfishEngine';
-import { DEFAULT_STOCKFISH_URL, buildStockfishHarness, type HarnessMessage } from './stockfishHarness';
+import { buildStockfishHarness, type HarnessMessage } from './stockfishHarness';
 import type { ChessEngine, EngineStatus, SearchRequest, SearchResult } from './types';
 
 /**
@@ -35,15 +35,11 @@ interface EngineContextValue {
 
 const EngineContext = createContext<EngineContextValue | null>(null);
 
-const BOOT_TIMEOUT_MS = 15_000;
+// The engine ships inside the app, so a slow boot now means a broken
+// WebView rather than a slow network.
+const BOOT_TIMEOUT_MS = 20_000;
 
-export function EngineProvider({
-  children,
-  stockfishUrl = process.env.EXPO_PUBLIC_STOCKFISH_URL ?? DEFAULT_STOCKFISH_URL,
-}: {
-  children: React.ReactNode;
-  stockfishUrl?: string;
-}) {
+export function EngineProvider({ children }: { children: React.ReactNode }) {
   const webViewRef = useRef<WebView>(null);
   // Lazy initial state, not a ref: these instances must be created exactly once
   // and are safe to read during render.
@@ -54,7 +50,7 @@ export function EngineProvider({
   const [attempt, setAttempt] = useState(0);
   const stockfishReady = useRef(false);
 
-  const html = useMemo(() => buildStockfishHarness(stockfishUrl), [stockfishUrl]);
+  const html = useMemo(() => buildStockfishHarness(), []);
 
   // If the WebView never reports in, stop waiting and use the local engine.
   useEffect(() => {
@@ -167,7 +163,7 @@ export function EngineProvider({
         <WebView
           key={attempt}
           ref={webViewRef}
-          source={{ html, baseUrl: 'https://cdn.jsdelivr.net' }}
+          source={{ html }}
           originWhitelist={['*']}
           javaScriptEnabled
           domStorageEnabled

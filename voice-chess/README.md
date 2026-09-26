@@ -213,11 +213,12 @@ which carries a QR code and a direct download. Build profiles live in
 
 ## Things worth knowing
 
-**Stockfish runs in a WebView.** React Native has no WebAssembly runtime, so the
-engine lives in a zero-sized `WebView` and speaks UCI over `postMessage`. The
-build is fetched from a CDN on first run and cached by the system WebView; if it
-can't load, the app falls back to the built-in engine and says so in the header.
-See [docs/architecture.md](docs/architecture.md#running-stockfish-on-a-phone).
+**Stockfish runs in a WebView, and ships inside the app.** React Native can't
+host the engine directly, so it lives in a 1×1 `WebView` and speaks UCI over
+`postMessage`. The engine is vendored rather than downloaded — no network, no
+CORS, no CDN — because fetching it was unreliable on real devices. If the
+WebView fails anyway, the app falls back to the built-in engine and says so in
+the header. See [docs/architecture.md](docs/architecture.md#running-stockfish-on-a-phone).
 
 **The grammar runs before the model.** Most of what people say at a chessboard is
 a small closed vocabulary. Matching it locally is instant, free and works

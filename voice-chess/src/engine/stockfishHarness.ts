@@ -1,62 +1,63 @@
+import { STOCKFISH_ASM_SOURCE } from './vendor/stockfishAsm';
+
 /**
  * The HTML document that hosts Stockfish inside a hidden `WebView`.
  *
  * ## Why a WebView
- * React Native has no WebAssembly runtime, so the only way to run real
- * Stockfish on a phone without a custom native module is to give it a browser
- * to live in. The WebView is zero-sized and non-interactive; it exists purely
- * as a WASM host and speaks UCI over `postMessage`.
+ * React Native has no JavaScript engine that can host Stockfish's Emscripten
+ * output with the threading and memory model it expects, so the engine gets a
+ * browser to live in. The WebView is 1×1, invisible and non-interactive; it
+ * exists purely as an engine host and speaks UCI over `postMessage`.
  *
- * ## How the engine build is wired up
- * `stockfish.wasm.js` from the `stockfish.js` package is an Emscripten build
- * meant to run as a Web Worker: it assigns a global `onmessage` handler for
- * incoming UCI commands and calls `postMessage` for engine output. We load it
- * as a plain script instead, then:
+ * ## Why the engine is embedded rather than fetched
+ * Earlier versions loaded the WASM build from a CDN. That failed on real
+ * devices for a reason that is worth recording: the Emscripten wrapper ships
+ * `locateFile: (f) => f`, which overrides the usual script-directory prefixing
+ * and returns the bare name `stockfish.wasm`. That resolves against the
+ * *document* URL — and a WebView document loaded from an HTML string has no
+ * useful URL to resolve against — so the binary was never found and the engine
+ * aborted with "both async and sync fetching of the wasm failed".
  *
- *   - shadow `window.postMessage` *before* the script runs, so engine output is
- *     forwarded to React Native rather than looping back into the page;
- *   - capture the `onmessage` handler the script installs, and use it as the
+ * The asm.js build is one self-contained file that fetches nothing, so
+ * inlining it removes the failure mode rather than working around it. It also
+ * means the engine needs no network, no CORS and no file-system access, and
+ * behaves identically on iOS and Android. The cost is that asm.js searches
+ * more slowly than WASM — immaterial at the 200–1500ms move times this app
+ * uses, and a far stronger opponent than the built-in fallback either way.
+ *
+ * ## How the engine is driven
+ * `stockfish.js` is written to run as a Web Worker: it assigns a global
+ * `onmessage` handler for incoming UCI commands and calls `postMessage` for
+ * engine output. It is loaded as a plain script instead, so:
+ *
+ *   - `window.postMessage` is shadowed *before* the engine runs, so its output
+ *     is forwarded to React Native rather than looping back into the page;
+ *   - the `onmessage` handler the engine installs is captured and becomes the
  *     command channel.
- *
- * ## Why the `<base>` tag matters
- * This Emscripten build ships `locateFile: (f) => f`, which *overrides* the
- * usual script-directory prefixing and hands back the bare name
- * `stockfish.wasm`. That resolves against the **document** URL, not the
- * script's — so without a `<base>` pointing at the package directory the WASM
- * fetch 400s and the engine aborts with "both async and sync fetching of the
- * wasm failed". Setting the base explicitly is what makes the binary load.
  */
-
-export const DEFAULT_STOCKFISH_URL =
-  'https://cdn.jsdelivr.net/npm/stockfish.js@10.0.2/stockfish.wasm.js';
-
-/** Fallback if the WASM build can't start (older WebViews). Pure asm.js. */
-export const FALLBACK_STOCKFISH_URL =
-  'https://cdn.jsdelivr.net/npm/stockfish.js@10.0.2/stockfish.js';
 
 export interface HarnessMessage {
   type: 'line' | 'ready' | 'error' | 'log';
   payload: string;
 }
 
-/** Directory portion of a script URL, with a trailing slash. */
-export function directoryOf(url: string): string {
-  return url.slice(0, url.lastIndexOf('/') + 1);
+export function buildStockfishHarness(): string {
+  // The engine is concatenated in, never passed through `String.replace`:
+  // `replace` gives `$&`, `$\'` and friends special meaning in the replacement
+  // string, and minified Stockfish is full of `$` sequences. Using `replace`
+  // here silently corrupts the engine — it boots far enough to answer `uciok`
+  // and then fails to search.
+  return `${HARNESS_PROLOGUE}
+${STOCKFISH_ASM_SOURCE}
+${HARNESS_EPILOGUE}`;
 }
 
-export function buildStockfishHarness(primaryUrl = DEFAULT_STOCKFISH_URL): string {
-  return `<!DOCTYPE html>
+const HARNESS_PROLOGUE = `<!DOCTYPE html>
 <html>
-<head>
-  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
-  <base href="${directoryOf(primaryUrl)}" />
-</head>
+<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /></head>
 <body>
 <script>
 (function () {
-  var PRIMARY = ${JSON.stringify(primaryUrl)};
-  var FALLBACK = ${JSON.stringify(FALLBACK_STOCKFISH_URL)};
-
   function send(type, payload) {
     try {
       window.ReactNativeWebView.postMessage(JSON.stringify({ type: type, payload: String(payload) }));
@@ -65,15 +66,15 @@ export function buildStockfishHarness(primaryUrl = DEFAULT_STOCKFISH_URL): strin
     }
   }
 
-  // Engine output arrives via postMessage(). Shadow it before loading the
-  // engine so its lines reach React Native instead of the page's own handler.
+  // Engine output arrives via postMessage(). Shadow it before the engine runs
+  // so its lines reach React Native instead of the page's own handler.
   window.postMessage = function (line) { send('line', line); };
 
   var engineInput = null;
 
-  // React Native injects commands by calling this.
+  // React Native injects UCI commands by calling this.
   window.__uci = function (command) {
-    if (!engineInput) return;
+    if (!engineInput) { send('error', 'engine is not ready for commands'); return; }
     try {
       engineInput({ data: command });
     } catch (e) {
@@ -81,29 +82,25 @@ export function buildStockfishHarness(primaryUrl = DEFAULT_STOCKFISH_URL): strin
     }
   };
 
-  function load(url, onFail) {
-    var script = document.createElement('script');
-    script.src = url;
-    script.onload = function () {
-      // The Emscripten build assigns window.onmessage during evaluation.
-      engineInput = window.onmessage;
-      window.onmessage = null;
-      if (typeof engineInput !== 'function') {
-        onFail('engine did not install a command handler');
-        return;
-      }
-      send('ready', url);
-    };
-    script.onerror = function () { onFail('failed to load ' + url); };
-    document.head.appendChild(script);
+  window.onerror = function (message) { send('error', 'engine crashed: ' + message); };
+
+  try {`;
+
+const HARNESS_EPILOGUE = `  } catch (e) {
+    send('error', 'engine failed to evaluate: ' + e.message);
+    return;
   }
 
-  load(PRIMARY, function (reason) {
-    send('log', reason + ' — retrying with the asm.js build');
-    load(FALLBACK, function (finalReason) { send('error', finalReason); });
-  });
+  // The engine assigns window.onmessage while evaluating above.
+  engineInput = window.onmessage;
+  window.onmessage = null;
+
+  if (typeof engineInput !== 'function') {
+    send('error', 'engine did not install a command handler');
+    return;
+  }
+  send('ready', 'embedded asm.js build');
 })();
 </script>
 </body>
 </html>`;
-}

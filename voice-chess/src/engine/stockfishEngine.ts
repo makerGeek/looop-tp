@@ -10,7 +10,7 @@ import { isPlausibleUciMove } from './types';
  */
 export class StockfishEngine implements ChessEngine {
   readonly kind = 'stockfish' as const;
-  name = 'Stockfish (WASM)';
+  name = 'Stockfish';
 
   private send: (command: string) => void = () => {};
   private booted = false;

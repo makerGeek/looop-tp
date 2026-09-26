@@ -165,36 +165,39 @@ reads as a slide. Castling passes the rook's origin too, so both pieces move.
 
 ## Running Stockfish on a phone
 
-React Native has no WebAssembly runtime, so the options are: ship a native module
-(a big build-config commitment, and no Expo Go), or give the engine a browser.
-This app does the second.
+React Native has no runtime that can host Stockfish's Emscripten output, so the
+options are a native module (a big build-config commitment, and no Expo Go) or
+giving the engine a browser. This app does the second: a 1×1, invisible
+`WebView` hosts the engine and speaks UCI over `postMessage`.
 
-[`stockfishHarness.ts`](../src/engine/stockfishHarness.ts) builds a page that
-loads `stockfish.wasm.js` from the `stockfish.js` package. That build is an
-Emscripten artifact written to run as a Web Worker: it installs a global
-`onmessage` for UCI input and calls `postMessage` for output. We load it as a
-plain script and adapt it:
+**The engine is embedded, not fetched.** Earlier versions loaded the WASM build
+from a CDN, and it failed on real devices. The reason is worth recording: the
+Emscripten wrapper ships `locateFile: (f) => f`, which overrides script-
+directory prefixing and returns the bare name `stockfish.wasm`. That resolves
+against the *document* URL — and a WebView document loaded from an HTML string
+has none — so the binary was never found.
 
-- `window.postMessage` is shadowed **before** the engine script runs, so engine
-  output is forwarded to React Native instead of looping back into the page's own
-  handler
-- the `onmessage` handler the script installs is captured and becomes the command
-  channel
+[`stockfishHarness.ts`](../src/engine/stockfishHarness.ts) now inlines the
+self-contained asm.js build from
+[`vendor/stockfishAsm.ts`](../src/engine/vendor/stockfishAsm.ts). No network, no
+CORS, no base URL, no file access, same behaviour on both platforms.
 
-Emscripten resolves `stockfish.wasm` relative to its own `<script>` URL, so
-pointing the tag at the CDN is enough for the WASM binary to load as well. Single
-threaded, so no `SharedArrayBuffer` and no COOP/COEP headers to arrange.
+`stockfish.js` is written to run as a Web Worker: it installs a global
+`onmessage` for UCI input and calls `postMessage` for output. It is loaded as a
+plain script instead, so the harness shadows `window.postMessage` *before* the
+engine evaluates — forwarding output to React Native rather than looping it
+back — and captures the `onmessage` handler the engine installs as the command
+channel.
 
-**The failure path is a first-class feature.** If the script 404s, the WebView
-errors, or the handshake doesn't finish inside 15 seconds, `EngineProvider`
-switches to `LocalEngine` and the header says *"Built-in engine"*. A failed
-search falls back for that one move without retiring Stockfish. Settings has a
-*Restart engine* button for when the network comes back.
+One sharp edge, caught by a test: the document is built by **concatenation**,
+never `String.replace`. `replace` gives `$&`, `` $` `` and `$'` special meaning
+in the replacement string, and minified Stockfish is full of `$` sequences —
+building the document that way corrupts the engine, which then boots far enough
+to answer `uciok` and returns no move.
 
-To run fully offline, vendor `stockfish.wasm.js` and `stockfish.wasm` into
-`assets/engine/` and point `EXPO_PUBLIC_STOCKFISH_URL` at the bundled copy.
-
----
+**The fallback is still a first-class feature.** If the WebView fails outright
+or the handshake doesn't finish, `EngineProvider` switches to `LocalEngine` and
+the header says *"Built-in engine"* rather than pretending.
 
 ## Design system
 
