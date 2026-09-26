@@ -36,10 +36,6 @@ jest.mock('react-native-safe-area-context', () => ({
   ...require('react-native-safe-area-context/jest/mock').default,
 }));
 
-// The engine host renders a WebView purely to run Stockfish; a null element is
-// enough for the tree to build.
-jest.mock('react-native-webview', () => ({ WebView: () => null }));
-
 jest.mock('expo-audio', () => ({
   useAudioRecorder: () => ({
     prepareToRecordAsync: jest.fn(async () => undefined),

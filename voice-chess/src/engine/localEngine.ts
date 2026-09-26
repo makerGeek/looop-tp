@@ -85,8 +85,18 @@ const PST: Record<PieceSymbol, number[]> = {
 
 const MATE_SCORE = 100_000;
 
+/**
+ * How deep the quiescence search may go chasing captures.
+ *
+ * Without it a fixed-depth search suffers the horizon effect: it happily grabs
+ * a defended piece because the recapture falls one ply beyond what it looks at.
+ * That single omission was the difference between an opponent that feels weak
+ * and one that feels broken.
+ */
+const MAX_QUIESCENCE_PLY = 6;
+
 export class LocalEngine implements ChessEngine {
-  readonly kind = 'local' as const;
+  readonly kind = 'builtin' as const;
   readonly name = 'Built-in engine';
 
   private cancelled = false;
@@ -148,7 +158,7 @@ export class LocalEngine implements ChessEngine {
       bestMove: toUci(chosen.move),
       scoreCp: Math.round(chosen.score),
       depth: depthReached,
-      kind: 'local',
+      kind: 'builtin',
     };
   }
 
@@ -187,7 +197,10 @@ function depthForSkill(skill: number): number {
 function negamax(chess: Chess, depth: number, alpha: number, beta: number, deadline: number): number {
   if (chess.isCheckmate()) return -MATE_SCORE + (10 - depth);
   if (chess.isDraw() || chess.isStalemate()) return 0;
-  if (depth <= 0 || Date.now() > deadline) return evaluate(chess);
+  // Hand off to quiescence rather than evaluating a position that may be in the
+  // middle of a capture sequence.
+  if (depth <= 0) return quiesce(chess, alpha, beta, deadline, MAX_QUIESCENCE_PLY);
+  if (Date.now() > deadline) return evaluate(chess);
 
   const moves = orderMoves(chess.moves({ verbose: true }));
   let value = -Infinity;
@@ -205,13 +218,56 @@ function negamax(chess: Chess, depth: number, alpha: number, beta: number, deadl
   return value;
 }
 
-/** Captures first — the cheapest move ordering that meaningfully helps pruning. */
-function orderMoves<T extends { captured?: PieceSymbol; promotion?: PieceSymbol }>(moves: T[]): T[] {
+/**
+ * Searches on past the depth limit while captures remain, so the engine sees
+ * the recapture that a fixed-depth search would miss.
+ *
+ * `standPat` is the score for declining to capture at all: if simply standing
+ * still already refutes the opponent's hopes, there is nothing to search.
+ */
+function quiesce(
+  chess: Chess,
+  alpha: number,
+  beta: number,
+  deadline: number,
+  plyLeft: number
+): number {
+  if (chess.isCheckmate()) return -MATE_SCORE;
+  if (chess.isDraw() || chess.isStalemate()) return 0;
+
+  const standPat = evaluate(chess);
+  if (standPat >= beta) return beta;
+  if (standPat > alpha) alpha = standPat;
+  if (plyLeft <= 0 || Date.now() > deadline) return standPat;
+
+  const noisy = orderMoves(
+    chess.moves({ verbose: true }).filter((move) => move.captured || move.promotion)
+  );
+
+  for (const move of noisy) {
+    chess.move(move.san);
+    const score = -quiesce(chess, -beta, -alpha, deadline, plyLeft - 1);
+    chess.undo();
+
+    if (score >= beta) return beta;
+    if (score > alpha) alpha = score;
+  }
+
+  return alpha;
+}
+
+/** Most-valuable-victim / least-valuable-attacker, then promotions. */
+function orderMoves<T extends { piece: PieceSymbol; captured?: PieceSymbol; promotion?: PieceSymbol }>(
+  moves: T[]
+): T[] {
   return [...moves].sort((a, b) => scoreOrder(b) - scoreOrder(a));
 }
 
-function scoreOrder(move: { captured?: PieceSymbol; promotion?: PieceSymbol }): number {
-  return (move.captured ? PIECE_VALUE[move.captured] : 0) + (move.promotion ? 800 : 0);
+function scoreOrder(move: { piece: PieceSymbol; captured?: PieceSymbol; promotion?: PieceSymbol }): number {
+  // Taking a queen with a pawn is searched long before taking a pawn with a
+  // queen: the cheap capture is far more likely to be the refutation.
+  const capture = move.captured ? PIECE_VALUE[move.captured] * 10 - PIECE_VALUE[move.piece] : 0;
+  return capture + (move.promotion ? 800 : 0);
 }
 
 /** Static evaluation from the side-to-move's point of view, in centipawns. */

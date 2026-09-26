@@ -18,7 +18,13 @@ import { findDifficulty } from './difficulty';
 const MINIMUM_THINK_MS = 450;
 
 export function useCpuTurn({ say }: { say(text: string): Promise<void> | void }) {
-  const engine = useEngine();
+  // Only the *actions* are taken from the context. Taking the whole object
+  // would put its identity in the effect's dependencies, and the context
+  // re-memoises whenever the engine's status changes — including the
+  // `thinking` flip that `search()` itself sets. The effect would then tear
+  // down and cancel the very search it had just started, and the CPU would
+  // never move.
+  const { search, status } = useEngine();
   const mode = useGameStore((state) => state.mode);
   const playerColor = useGameStore((state) => state.playerColor);
   const difficultyId = useGameStore((state) => state.difficultyId);
@@ -48,7 +54,7 @@ export function useCpuTurn({ say }: { say(text: string): Promise<void> | void })
 
     (async () => {
       try {
-        const result = await engine.search({
+        const result = await search({
           fen,
           movetimeMs: preset.movetimeMs,
           skill: preset.skill,
@@ -85,14 +91,14 @@ export function useCpuTurn({ say }: { say(text: string): Promise<void> | void })
       cancelled = true;
       setIsThinking(false);
     };
-  }, [difficultyId, engine, fen, gameOver, mode, playerColor, turn]);
+  }, [difficultyId, fen, gameOver, mode, playerColor, search, turn]);
 
   /** Asks the engine for a suggestion for the *player's* side. */
   const requestHint = useCallback(async (): Promise<string | null> => {
     const store = useGameStore.getState();
     if (selectIsGameOver(store)) return null;
     try {
-      const result = await engine.search({
+      const result = await search({
         fen: store.snapshot.fen,
         movetimeMs: 600,
         skill: 20,
@@ -104,9 +110,9 @@ export function useCpuTurn({ say }: { say(text: string): Promise<void> | void })
     } catch {
       return null;
     }
-  }, [engine]);
+  }, [search]);
 
-  return { isThinking, requestHint, engineStatus: engine.status };
+  return { isThinking, requestHint, engineStatus: status };
 }
 
 function delay(ms: number): Promise<void> {

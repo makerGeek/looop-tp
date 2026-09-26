@@ -74,19 +74,8 @@ export function GameHeader({
 }
 
 function engineLabel(status: EngineStatus, isThinking: boolean): string {
-  if (isThinking) return 'Thinking…';
-  switch (status.state) {
-    case 'loading':
-      return 'Starting engine…';
-    case 'ready':
-      return status.kind === 'stockfish' ? status.name : 'Built-in engine';
-    case 'thinking':
-      return 'Thinking…';
-    case 'failed':
-      return 'Engine unavailable';
-    default:
-      return '';
-  }
+  if (isThinking || status.state === 'thinking') return 'Thinking…';
+  return status.state === 'ready' ? status.name : '';
 }
 
 const styles = StyleSheet.create({

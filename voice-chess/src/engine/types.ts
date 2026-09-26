@@ -1,14 +1,15 @@
 import type { Move } from '@/chess/types';
 
 /** Where the CPU's move came from, surfaced in the UI so it's never a mystery. */
-export type EngineKind = 'stockfish' | 'local';
+export type EngineKind = 'builtin';
 
+/**
+ * The engine runs in-process and cannot fail to start, so there is no loading
+ * or failed state to model — only whether it is currently searching.
+ */
 export type EngineStatus =
-  | { state: 'idle' }
-  | { state: 'loading' }
   | { state: 'ready'; kind: EngineKind; name: string }
-  | { state: 'thinking'; kind: EngineKind }
-  | { state: 'failed'; reason: string };
+  | { state: 'thinking'; kind: EngineKind; name: string };
 
 export interface SearchRequest {
   fen: string;
@@ -45,8 +46,8 @@ export interface ChessEngine {
  * `SearchResult.bestMove` is a *suggestion*, exactly like a spoken move.
  *
  * The game store feeds it through `ChessGame.tryMove()` like anything else, so
- * a buggy or hostile engine can no more put an illegal move on the board than a
- * misheard sentence can.
+ * a buggy engine can no more put an illegal move on the board than a misheard
+ * sentence can.
  */
 export function isPlausibleUciMove(value: string): boolean {
   return /^[a-h][1-8][a-h][1-8][qrbn]?$/.test(value);

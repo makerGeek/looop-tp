@@ -142,13 +142,9 @@ export default function HomeScreen() {
             { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.md, padding: spacing.md },
           ]}
         >
-          <StatusDot ok={engine.status.state === 'ready' && engine.status.kind === 'stockfish'} />
+          <StatusDot ok />
           <Text style={[typography.caption, { color: colors.textMuted, flex: 1 }]}>
-            {engine.status.state === 'ready'
-              ? engine.status.kind === 'stockfish'
-                ? `${engine.status.name} ready`
-                : 'Built-in engine — Stockfish did not start'
-              : 'Starting the engine…'}
+            {engine.status.state === 'thinking' ? 'Engine thinking…' : `${engine.status.name} ready`}
           </Text>
         </View>
 

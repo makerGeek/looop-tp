@@ -4,7 +4,7 @@ A cross-platform mobile chess app you play by talking. Say “knight to f3” an
 knight goes to f3. Say “take that back” and it does. Ask “what’s the position?”
 and it tells you, briefly.
 
-Built with Expo and React Native. Stockfish (WebAssembly) plays the CPU side.
+Built with Expo and React Native. A JavaScript chess engine plays the CPU side.
 OpenAI handles speech-to-text, speech, and the harder end of natural language.
 
 > **The one rule that shapes the whole design:** the language model never
@@ -54,7 +54,7 @@ cp .env.example .env
 ## What it does
 
 **Play**
-- Player vs CPU at five strengths, from *Casual* (~800 Elo) to *Brutal* (full strength)
+- Player vs CPU at five strengths, from *Casual* to *Brutal*
 - Pass-and-play on one device, with the board auto-flipping between turns
 - Take back, redo, resign, offer a draw, ask for a hint
 - Games survive an app restart; the menu offers to resume
@@ -78,7 +78,7 @@ cp .env.example .env
 **Keep working when things break**
 - No API key, no network, or a rejected key → typed and tapped moves still work,
   the deterministic voice grammar still parses, and the on-device voice still speaks
-- Stockfish can't load → a built-in JavaScript engine takes over, and the UI says so
+- The engine runs in-process, so there is nothing to load and nothing to fail
 
 ---
 
@@ -107,10 +107,9 @@ voice-chess/
 │   │   ├── speak.ts            Text-to-speech, with fallbacks
 │   │   └── useVoiceSession.ts  The record → parse → act loop
 │   ├── engine/                 The thinking half
-│   │   ├── EngineProvider.tsx  Hosts Stockfish in a hidden WebView
-│   │   ├── stockfishEngine.ts  UCI client (testable without a WebView)
-│   │   ├── stockfishHarness.ts The WASM host page
-│   │   ├── localEngine.ts      Pure-JS fallback engine
+│   │   ├── EngineProvider.tsx  Provides the engine to the app
+│   │   ├── localEngine.ts      The engine: negamax + quiescence, pure JS
+│   │   ├── difficulty.ts       Strength presets
 │   │   └── useCpuTurn.ts       Connects "engine's turn" to "ask the engine"
 │   ├── state/                  Zustand stores (game, settings)
 │   ├── multiplayer/            The seam online play will slot into
@@ -136,12 +135,10 @@ a simulator:
 npm run web
 ```
 
-Treat it as a preview, not a supported platform. Two things differ by design:
-the Stockfish WebView has no web equivalent, so the app falls back to the
-built-in engine (and says so in the header), and microphone capture behaves
-differently from a real device. Everything else — the board, animations,
-theming, the move list, and the whole type-a-move parsing pipeline — is the
-same code the phone runs.
+Treat it as a preview, not a supported platform. Microphone capture behaves
+differently from a real device; everything else — the board, animations,
+theming, the move list, the engine, and the whole type-a-move parsing pipeline
+— is the same code the phone runs.
 
 This preview earns its keep: it is how the move-list layout bug that was
 starving the board of space got found, which no unit test could have caught.
@@ -213,12 +210,11 @@ which carries a QR code and a direct download. Build profiles live in
 
 ## Things worth knowing
 
-**Stockfish runs in a WebView, and ships inside the app.** React Native can't
-host the engine directly, so it lives in a 1×1 `WebView` and speaks UCI over
-`postMessage`. The engine is vendored rather than downloaded — no network, no
-CORS, no CDN — because fetching it was unreliable on real devices. If the
-WebView fails anyway, the app falls back to the built-in engine and says so in
-the header. See [docs/architecture.md](docs/architecture.md#running-stockfish-on-a-phone).
+**The engine is plain JavaScript, running in Hermes.** No WebView, no
+WebAssembly, no network, no permissions — it starts instantly and behaves
+identically on both platforms. Earlier versions hosted Stockfish in a hidden
+WebView; that never once worked on a real device, so it was removed rather than
+carried. See [docs/architecture.md](docs/architecture.md#the-engine).
 
 **The grammar runs before the model.** Most of what people say at a chessboard is
 a small closed vocabulary. Matching it locally is instant, free and works

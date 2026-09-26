@@ -10,7 +10,7 @@ describe('LocalEngine', () => {
 
     const result = await engine.search({ fen: game.fen, movetimeMs: 150, skill: 8 });
 
-    expect(result.kind).toBe('local');
+    expect(result.kind).toBe('builtin');
     expect(result.bestMove).toMatch(/^[a-h][1-8][a-h][1-8][qrbn]?$/);
     expect(game.tryMove({
       from: result.bestMove.slice(0, 2) as never,

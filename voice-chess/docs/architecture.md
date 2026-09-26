@@ -163,41 +163,55 @@ reads as a slide. Castling passes the rook's origin too, so both pieces move.
 
 ---
 
-## Running Stockfish on a phone
+## The engine
 
-React Native has no runtime that can host Stockfish's Emscripten output, so the
-options are a native module (a big build-config commitment, and no Expo Go) or
-giving the engine a browser. This app does the second: a 1×1, invisible
-`WebView` hosts the engine and speaks UCI over `postMessage`.
+`ChessEngine` is a three-method interface. One implementation satisfies it:
+`LocalEngine`, a negamax search written in plain TypeScript that runs directly
+in Hermes.
 
-**The engine is embedded, not fetched.** Earlier versions loaded the WASM build
-from a CDN, and it failed on real devices. The reason is worth recording: the
-Emscripten wrapper ships `locateFile: (f) => f`, which overrides script-
-directory prefixing and returns the bare name `stockfish.wasm`. That resolves
-against the *document* URL — and a WebView document loaded from an HTML string
-has none — so the binary was never found.
+**There used to be two.** Stockfish was hosted in a hidden `WebView`, first
+fetched from a CDN and then embedded. It never worked on a real device, across
+several distinct failures:
 
-[`stockfishHarness.ts`](../src/engine/stockfishHarness.ts) now inlines the
-self-contained asm.js build from
-[`vendor/stockfishAsm.ts`](../src/engine/vendor/stockfishAsm.ts). No network, no
-CORS, no base URL, no file access, same behaviour on both platforms.
+- the Emscripten build resolves its WASM binary against a document URL a
+  WebView loaded from an HTML string does not have;
+- once the binary was inlined, the ~820 KB document either failed to load or
+  was still compiling when the boot timeout fired;
+- and the document had to be assembled by concatenation, because `String.replace`
+  gives `$&`, `` $` `` and `$'` special meaning in the replacement string and
+  minified Stockfish is full of `$` sequences.
 
-`stockfish.js` is written to run as a Web Worker: it installs a global
-`onmessage` for UCI input and calls `postMessage` for output. It is loaded as a
-plain script instead, so the harness shadows `window.postMessage` *before* the
-engine evaluates — forwarding output to React Native rather than looping it
-back — and captures the `onmessage` handler the engine installs as the command
-channel.
+Every game fell back to the JavaScript engine regardless, so the WebView was
+removed: it contributed 820 KB, a boot timeout, a whole failure surface and a
+status line explaining which engine had lost. A weaker opponent that always
+works beats a stronger one that never starts.
 
-One sharp edge, caught by a test: the document is built by **concatenation**,
-never `String.replace`. `replace` gives `$&`, `` $` `` and `$'` special meaning
-in the replacement string, and minified Stockfish is full of `$` sequences —
-building the document that way corrupts the engine, which then boots far enough
-to answer `uciok` and returns no move.
+### What makes the search respectable
 
-**The fallback is still a first-class feature.** If the WebView fails outright
-or the handshake doesn't finish, `EngineProvider` switches to `LocalEngine` and
-the header says *"Built-in engine"* rather than pretending.
+The first version searched to a fixed depth and suffered badly from the horizon
+effect — it would take a defended piece because the recapture fell one ply
+beyond what it looked at. `localEngine.bench.test.ts` measures this directly:
+it failed a tactical suite 4/6 and swung 8 points of material in 16 plies of
+self-play.
+
+Adding **quiescence search** — searching on past the depth limit while captures
+remain — and **MVV-LVA move ordering** took it to 6/6 with a 3-point swing.
+Those are the two changes that separate an opponent that feels weak from one
+that feels broken.
+
+Strength is then shaped per difficulty: `chooseWithSkill` widens the window of
+"acceptable" moves as the level drops, so weak levels make recognisable
+human-style mistakes rather than playing blind.
+
+### The turn loop
+
+`useCpuTurn` connects "it is the engine's turn" to "ask the engine". It takes
+only the *actions* from the engine context, never the context object itself —
+that object re-memoises when the engine's status changes, including the
+`thinking` flip that `search()` sets, and depending on it made the effect tear
+down and cancel the search it had just started. The CPU silently never moved.
+`useCpuTurn.test.tsx` drives a real game against a real engine to keep that
+fixed.
 
 ## Design system
 

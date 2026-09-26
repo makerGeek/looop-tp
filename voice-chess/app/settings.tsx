@@ -187,22 +187,12 @@ export default function SettingsScreen() {
 
       <Card title="Engine">
         <Text style={[typography.body, { color: colors.text }]}>
-          {engine.status.state === 'ready'
-            ? engine.status.kind === 'stockfish'
-              ? `${engine.status.name} — running inside the app`
-              : 'Built-in engine — Stockfish did not start'
-            : 'Starting…'}
+          {engine.status.state === 'thinking' ? 'Thinking…' : engine.status.name}
         </Text>
-        {engine.fallbackReason ? (
-          <Text style={[typography.caption, { color: colors.warning, marginTop: spacing.xs }]}>
-            {engine.fallbackReason}
-          </Text>
-        ) : null}
         <Text style={[typography.caption, { color: colors.textFaint, marginTop: spacing.xs }]}>
-          Stockfish ships inside the app — there is no download and it works offline. If it ever
-          fails to start, the smaller built-in engine takes over so play never stops.
+          The engine runs inside the app in plain JavaScript — no download, no WebAssembly and no
+          network. Strength is set by the difficulty you pick when starting a game.
         </Text>
-        <Button label="Restart engine" variant="secondary" onPress={engine.retry} style={{ marginTop: spacing.md }} />
       </Card>
     </ScrollView>
   );
