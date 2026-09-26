@@ -147,7 +147,7 @@ export default function HomeScreen() {
             {engine.status.state === 'ready'
               ? engine.status.kind === 'stockfish'
                 ? `${engine.status.name} ready`
-                : 'Built-in engine (Stockfish unavailable)'
+                : 'Built-in engine — Stockfish did not start'
               : 'Starting the engine…'}
           </Text>
         </View>

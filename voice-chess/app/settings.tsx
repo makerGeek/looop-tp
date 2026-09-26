@@ -189,13 +189,18 @@ export default function SettingsScreen() {
         <Text style={[typography.body, { color: colors.text }]}>
           {engine.status.state === 'ready'
             ? engine.status.kind === 'stockfish'
-              ? `${engine.status.name} — running as WebAssembly`
-              : 'Built-in engine — Stockfish could not be loaded'
+              ? `${engine.status.name} — running inside the app`
+              : 'Built-in engine — Stockfish did not start'
             : 'Starting…'}
         </Text>
+        {engine.fallbackReason ? (
+          <Text style={[typography.caption, { color: colors.warning, marginTop: spacing.xs }]}>
+            {engine.fallbackReason}
+          </Text>
+        ) : null}
         <Text style={[typography.caption, { color: colors.textFaint, marginTop: spacing.xs }]}>
-          Stockfish is fetched once and cached by the system WebView. Without it the app falls back to a
-          smaller built-in engine so play never stops.
+          Stockfish ships inside the app — there is no download and it works offline. If it ever
+          fails to start, the smaller built-in engine takes over so play never stops.
         </Text>
         <Button label="Restart engine" variant="secondary" onPress={engine.retry} style={{ marginTop: spacing.md }} />
       </Card>

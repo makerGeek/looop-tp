@@ -29,7 +29,16 @@ interface EngineContextValue {
   /** Runs a search, falling back to the local engine if Stockfish can't. */
   search(request: SearchRequest): Promise<SearchResult>;
   stop(): void;
-  /** Retries Stockfish after a failure (e.g. once the network returns). */
+  /**
+   * Why the app fell back to the built-in engine, or `null` when it didn't.
+   *
+   * Stockfish ships inside the binary, so a fallback now means something is
+   * genuinely wrong with the WebView rather than with the network. Showing the
+   * reason is the difference between a bug report we can act on and "it says
+   * Stockfish could not be loaded".
+   */
+  fallbackReason: string | null;
+  /** Retries Stockfish after a failure. */
   retry(): void;
 }
 
@@ -47,6 +56,7 @@ export function EngineProvider({ children }: { children: React.ReactNode }) {
   const [local] = useState(() => new LocalEngine());
 
   const [status, setStatus] = useState<EngineStatus>({ state: 'loading' });
+  const [fallbackReason, setFallbackReason] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   const stockfishReady = useRef(false);
 
@@ -59,6 +69,9 @@ export function EngineProvider({ children }: { children: React.ReactNode }) {
     const timer = setTimeout(() => {
       if (stockfishReady.current) return;
       stockfish.fail('Stockfish took too long to start');
+      setFallbackReason(
+        `The engine host did not report in within ${BOOT_TIMEOUT_MS / 1000} seconds.`
+      );
       setStatus({ state: 'ready', kind: 'local', name: local.name });
     }, BOOT_TIMEOUT_MS);
 
@@ -83,9 +96,11 @@ export function EngineProvider({ children }: { children: React.ReactNode }) {
             .init()
             .then(() => {
               stockfishReady.current = true;
+              setFallbackReason(null);
               setStatus({ state: 'ready', kind: 'stockfish', name: stockfish.name });
             })
             .catch((error: Error) => {
+              setFallbackReason(`Handshake failed: ${error.message}`);
               setStatus({ state: 'ready', kind: 'local', name: local.name });
               if (__DEV__) console.warn('[engine] Stockfish handshake failed:', error.message);
             });
@@ -97,6 +112,7 @@ export function EngineProvider({ children }: { children: React.ReactNode }) {
 
         case 'error':
           stockfish.fail(message.payload);
+          setFallbackReason(message.payload);
           setStatus({ state: 'ready', kind: 'local', name: local.name });
           break;
 
@@ -142,6 +158,7 @@ export function EngineProvider({ children }: { children: React.ReactNode }) {
   }, [local, stockfish]);
 
   const retry = useCallback(() => {
+    setFallbackReason(null);
     setStatus({ state: 'loading' });
     setAttempt((value) => value + 1);
   }, []);
@@ -152,8 +169,8 @@ export function EngineProvider({ children }: { children: React.ReactNode }) {
   }, [local, stockfish]);
 
   const value = useMemo<EngineContextValue>(
-    () => ({ status, search, stop, retry }),
-    [retry, search, status, stop]
+    () => ({ status, search, stop, retry, fallbackReason }),
+    [fallbackReason, retry, search, status, stop]
   );
 
   return (
@@ -168,8 +185,10 @@ export function EngineProvider({ children }: { children: React.ReactNode }) {
           javaScriptEnabled
           domStorageEnabled
           onMessage={onMessage}
-          onError={() => {
-            stockfish.fail('WebView failed to load');
+          onError={(event) => {
+            const detail = event.nativeEvent?.description ?? 'unknown error';
+            stockfish.fail(`WebView failed to load: ${detail}`);
+            setFallbackReason(`The engine host could not load: ${detail}`);
             setStatus({ state: 'ready', kind: 'local', name: local.name });
           }}
           // The engine host must never steal focus or draw anything.
