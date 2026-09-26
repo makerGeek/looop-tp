@@ -39,6 +39,8 @@
     "eslint-config-expo": "~57.0.2",
     "jest": "~29.7.0",
     "jest-expo": "~57.0.5",
+    "react-dom": "19.2.3",
+    "react-native-web": "^0.21.2",
     "react-test-renderer": "^19.2.3",
     "test-renderer": "^1.2.0",
     "typescript": "~6.0.3"
@@ -55,8 +57,9 @@
     "doctor": "npx expo-doctor",
     "build:android": "eas build --platform android --profile preview",
     "build:ios": "eas build --platform ios --profile preview",
-    "build:ios:simulator": "eas build --platform ios --profile preview:simulator"
+    "build:ios:simulator": "eas build --platform ios --profile preview:simulator",
+    "web": "expo start --web"
   },
   "private": true,
-  "description": "Voice-driven chess for iOS and Android — talk your moves, Stockfish talks back."
+  "description": "Voice-driven chess for iOS and Android \u2014 talk your moves, Stockfish talks back."
 }

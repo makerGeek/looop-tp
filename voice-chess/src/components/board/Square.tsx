@@ -83,8 +83,8 @@ const styles = StyleSheet.create({
   fill: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   dot: { position: 'absolute' },
   ring: { position: 'absolute', backgroundColor: 'transparent' },
-  rank: { position: 'absolute', top: 2, left: 3, fontSize: 9, fontWeight: '700', opacity: 0.75 },
-  file: { position: 'absolute', bottom: 1, right: 3, fontSize: 9, fontWeight: '700', opacity: 0.75 },
+  rank: { position: 'absolute', top: 2, left: 3, fontSize: 9, fontWeight: '700', opacity: 0.45 },
+  file: { position: 'absolute', bottom: 1, right: 3, fontSize: 9, fontWeight: '700', opacity: 0.45 },
 });
 
 export const BoardSquare = memo(BoardSquareComponent);

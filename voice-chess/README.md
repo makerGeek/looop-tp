@@ -125,6 +125,29 @@ voice-chess/
 
 ---
 
+## Seeing it run without a device
+
+There is no web build of this app — iOS and Android are the targets. But
+`react-native-web` is kept as a **dev dependency** so the UI can be driven in a
+desktop browser, which is the fastest way to check layout and theming without
+a simulator:
+
+```bash
+npm run web
+```
+
+Treat it as a preview, not a supported platform. Two things differ by design:
+the Stockfish WebView has no web equivalent, so the app falls back to the
+built-in engine (and says so in the header), and microphone capture behaves
+differently from a real device. Everything else — the board, animations,
+theming, the move list, and the whole type-a-move parsing pipeline — is the
+same code the phone runs.
+
+This preview earns its keep: it is how the move-list layout bug that was
+starving the board of space got found, which no unit test could have caught.
+
+---
+
 ## Building an installable app
 
 The dev server above is the fastest way to try it. To get a build you can hand to
@@ -180,6 +203,7 @@ which carries a QR code and a direct download. Build profiles live in
 | `npm run test:coverage` | Coverage report |
 | `npm run typecheck` | `tsc --noEmit`, strict |
 | `npm run lint` | ESLint, Expo config |
+| `npm run web` | Browser preview of the UI (dev only, not a shipping target) |
 | `npm run doctor` | Dependency and config health check |
 | `npm run build:android` | EAS Build → installable APK |
 | `npm run build:ios` | EAS Build → ad-hoc iOS build |

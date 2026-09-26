@@ -42,7 +42,11 @@ export function MoveList({ history }: { history: MoveRecord[] }) {
       ref={scrollRef}
       horizontal
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ gap: spacing.sm, paddingRight: spacing.lg }}
+      // A horizontal ScrollView stretches its children across the cross axis by
+      // default, so without `flex-start` each move chip grows to the full height
+      // the row is offered — which in turn starves the board of space.
+      style={styles.scroll}
+      contentContainerStyle={[styles.content, { gap: spacing.sm, paddingRight: spacing.lg }]}
     >
       {rows.map((row) => (
         <View
@@ -64,5 +68,7 @@ export function MoveList({ history }: { history: MoveRecord[] }) {
 }
 
 const styles = StyleSheet.create({
+  scroll: { flexGrow: 0, flexShrink: 0 },
+  content: { alignItems: 'flex-start' },
   pair: { flexDirection: 'row', alignItems: 'center', paddingVertical: 4 },
 });
