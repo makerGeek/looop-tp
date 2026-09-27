@@ -48,6 +48,41 @@ let generation = 0;
 /** Serialises utterances so they play one after another. */
 let queue: Promise<unknown> = Promise.resolve();
 let currentPlayer: ReturnType<typeof createAudioPlayer> | null = null;
+/**
+ * Settles the utterance that is playing right now.
+ *
+ * Removing a player does not make it report a final status, so without this an
+ * interrupted utterance would sit on its timeout — twenty seconds during which
+ * `isSpeaking()` stays true and continuous listening refuses to reopen the
+ * microphone. Interrupting has to be immediate to be worth anything.
+ */
+let settleCurrent: (() => void) | null = null;
+/** Utterances accepted but not yet finished, including ones still synthesising. */
+let outstanding = 0;
+
+/**
+ * Whether the app is talking, or is about to.
+ *
+ * Continuous listening needs this: playing audio sets `allowsRecording: false`,
+ * so a microphone left open through an utterance is not merely impolite, it is
+ * broken — and what it would hear is the app's own voice.
+ */
+export function isSpeaking(): boolean {
+  return outstanding > 0;
+}
+
+/**
+ * Resolves once nothing is speaking or queued.
+ *
+ * Deliberately re-checks: a line enqueued while we wait (the engine announcing
+ * its reply a second after your move was confirmed) extends the wait rather
+ * than sneaking through behind us.
+ */
+export async function whenQuiet(): Promise<void> {
+  for (let guard = 0; outstanding > 0 && guard < 64; guard += 1) {
+    await queue.catch(() => undefined);
+  }
+}
 
 /** Stops what is playing and abandons anything queued behind it. */
 export async function stopSpeaking(): Promise<void> {
@@ -61,12 +96,16 @@ export async function stopSpeaking(): Promise<void> {
 }
 
 function releasePlayer(): void {
+  const settle = settleCurrent;
+  settleCurrent = null;
   try {
     currentPlayer?.remove();
   } catch {
     // Already released.
   }
   currentPlayer = null;
+  // Re-entrant: `finish` releases the player itself, and is idempotent.
+  settle?.();
 }
 
 /**
@@ -82,10 +121,21 @@ export function speak(
   if (!trimmed) return Promise.resolve('silent');
 
   const mine = generation;
+  // Counted before the queue is joined, so `isSpeaking()` is true the instant
+  // `speak()` returns — a caller that reopens the microphone on the next line
+  // must not win that race.
+  outstanding += 1;
   const run = queue.then(() => utter(trimmed, mine, config, options));
   // The queue must survive a failed utterance, so swallow here and let the
   // caller see the rejection on `run` instead.
-  queue = run.catch(() => undefined);
+  queue = run.then(
+    () => {
+      outstanding -= 1;
+    },
+    () => {
+      outstanding -= 1;
+    }
+  );
   return run;
 }
 
@@ -134,6 +184,7 @@ function playToCompletion(uri: string, mine: number): Promise<void> {
 
     const player = createAudioPlayer(uri);
     currentPlayer = player;
+    settleCurrent = finish;
 
     const subscription = player.addListener('playbackStatusUpdate', (status) => {
       if (status.didJustFinish || mine !== generation) finish();

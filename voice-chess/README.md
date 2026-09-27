@@ -60,7 +60,10 @@ cp .env.example .env
 - Games survive an app restart; the menu offers to resume
 
 **Talk**
-- Hold-to-talk or tap-to-toggle, your choice
+- Hold-to-talk, tap-to-toggle, or always-listening — your choice
+- Always-listening plays a whole game hands-free: the app works out where each
+  sentence ends, ignores coughs and background noise, and keeps the microphone
+  shut while it is talking back
 - Natural phrasing: “e4”, “knight to f3”, “bishop takes e5”, “castle short”,
   “pawn to e8, promote to a knight”, “take that back”, “what’s the position?”
 - Clarifying questions when two pieces could do the same thing — *“Which knight,
@@ -104,7 +107,8 @@ voice-chess/
 │   │   ├── interpret.ts        Pure decision logic, incl. clarifying questions
 │   │   ├── dialogue.ts         What the app says, and how
 │   │   ├── transcribe.ts       Speech-to-text
-│   │   ├── speak.ts            Text-to-speech, with fallbacks
+│   │   ├── speak.ts            Text-to-speech, queued so lines never overlap
+│   │   ├── vad.ts              Where one spoken sentence ends (pure reducer)
 │   │   └── useVoiceSession.ts  The record → parse → act loop
 │   ├── engine/                 The thinking half
 │   │   ├── EngineProvider.tsx  Provides the engine to the app

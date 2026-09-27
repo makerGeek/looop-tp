@@ -23,7 +23,7 @@ import {
 import type { PieceSymbol, Square } from '@/chess/types';
 import { ConversationLog } from '@/components/ConversationLog';
 import { GameHeader } from '@/components/GameHeader';
-import { MicButton } from '@/components/MicButton';
+import { MicButton, MicCaption } from '@/components/MicButton';
 import { MoveList } from '@/components/MoveList';
 import { PromotionSheet } from '@/components/PromotionSheet';
 import { Board } from '@/components/board/Board';
@@ -243,6 +243,10 @@ export default function GameScreen() {
     onCommand: handleCommand,
     onQuestion: handleQuestion,
     onMovePlayed: () => buzz(Haptics.ImpactFeedbackStyle.Medium),
+    // Continuous listening uses this to keep the microphone shut while the
+    // engine searches: it will announce its move the moment it finishes, and
+    // the alternative is transcribing our own voice.
+    isBusy: () => isThinking,
   });
 
   // ------------------------------------------------------------------ board
@@ -420,6 +424,7 @@ export default function GameScreen() {
             state={voice.state}
             level={voice.level}
             mode={voiceMode}
+            active={voice.active}
             disabled={!voiceEnabled}
             onStart={voice.start}
             onStop={voice.stop}
@@ -434,6 +439,8 @@ export default function GameScreen() {
             )}
           </View>
         </View>
+
+        <MicCaption state={voice.state} mode={voiceMode} active={voice.active} />
 
         <View style={[styles.typeRow, { gap: spacing.sm }]}>
           <TextInput

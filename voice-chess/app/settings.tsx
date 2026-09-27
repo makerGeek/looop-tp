@@ -8,11 +8,23 @@ import { Card } from '@/components/ui/Card';
 import { Segmented } from '@/components/ui/Segmented';
 import { SettingRow, ToggleRow } from '@/components/ui/SettingRow';
 import { useEngine } from '@/engine/EngineProvider';
-import { DEFAULT_MODELS, useSettingsStore } from '@/state/settingsStore';
+import { DEFAULT_MODELS, useSettingsStore, type VoiceMode } from '@/state/settingsStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import type { SpeechVoice } from '@/voice/speak';
 
 const VOICES: SpeechVoice[] = ['coral', 'alloy', 'sage', 'verse', 'ballad'];
+
+/**
+ * The three microphone modes differ enough in feel that naming them is not
+ * enough — the hint changes with the choice so the trade-off is visible at the
+ * moment of choosing.
+ */
+const MIC_HINTS: Record<VoiceMode, string> = {
+  'push-to-talk': 'Hold the mic button while you speak, like a walkie-talkie',
+  'tap-to-toggle': 'Tap to start, tap again to send',
+  continuous:
+    'Tap once and keep talking — the app works out where each sentence ends. Uses more battery and more transcription credit.',
+};
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -77,12 +89,13 @@ export default function SettingsScreen() {
           value={settings.spokenFeedback}
           onChange={() => settings.toggle('spokenFeedback')}
         />
-        <SettingRow label="Microphone" hint="How the mic button behaves">
+        <SettingRow label="Microphone" hint={MIC_HINTS[settings.voiceMode]}>
           <View style={{ width: 190 }}>
             <Segmented
               options={[
                 { value: 'push-to-talk', label: 'Hold' },
                 { value: 'tap-to-toggle', label: 'Tap' },
+                { value: 'continuous', label: 'Always' },
               ]}
               value={settings.voiceMode}
               onChange={settings.setVoiceMode}

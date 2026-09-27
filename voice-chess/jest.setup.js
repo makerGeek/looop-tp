@@ -100,8 +100,13 @@ jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock')
 );
 
+// The device voice must *finish*. `speak()` arms a twenty-second failsafe timer
+// and clears it when the utterance completes, so a double that never calls back
+// leaves that timer pending and Jest cannot shut the worker down cleanly.
 jest.mock('expo-speech', () => ({
-  speak: jest.fn(),
+  speak: jest.fn((_text, options) => {
+    options?.onDone?.();
+  }),
   stop: jest.fn(async () => undefined),
   isSpeakingAsync: jest.fn(async () => false),
 }));

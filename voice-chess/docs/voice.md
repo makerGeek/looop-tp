@@ -3,8 +3,8 @@
 ## The loop
 
 ```
-   hold the mic
-        │
+   hold the mic  ─── or, in continuous mode, vad.ts decides
+        │                     where the sentence ended
         ▼
    expo-audio ──────────────▶  an .m4a in the cache directory
         │
@@ -36,15 +36,73 @@
 
 ### 1. Recording
 
-`expo-audio`, `RecordingPresets.HIGH_QUALITY`, straight to the cache directory.
-Two interaction models, selectable in Settings:
+`expo-audio`, `RecordingPresets.HIGH_QUALITY` **plus `isMeteringEnabled: true`**,
+straight to the cache directory. That flag matters more than it looks: no preset
+sets it, and without it `metering` is simply `undefined` — no input-level ring,
+and nothing for the voice-activity detector to detect. It fails silently rather
+than loudly, so there is a test asserting the recorder is configured with it.
+
+Three interaction models, selectable in Settings:
 
 - **Hold to talk** (default) — matches the walkie-talkie model most people
   already have, and the endpoint is unambiguous: you decide when you're done.
 - **Tap to toggle** — better for accessibility, and for thinking mid-sentence.
+- **Always listening** — one tap and the microphone is yours for the rest of the
+  game. See below.
 
 The mic ring tracks live input level. Seeing that you're being heard is the
 single most reassuring thing a voice UI can do, and it costs one shared value.
+
+### 1b. Continuous listening — [`vad.ts`](../src/voice/vad.ts)
+
+Continuous listening has to answer one question over and over: *has this person
+finished talking?* Nothing on the device will say so, and sending a fixed-length
+clip every few seconds is both wasteful and unpleasant — it cuts people off
+mid-sentence and pays to transcribe silence.
+
+What the recorder does give us is an input level. `vad.ts` turns a stream of
+those into utterance boundaries, and it is a **pure reducer**: state plus sample
+in, state plus event out. No timers, no recorder, no React. That is the whole
+reason end-of-speech behaviour is testable rather than guessed at on a phone.
+
+Four details carry the weight:
+
+| Problem | What it does |
+| --- | --- |
+| Rooms differ, and phone gain drifts | The threshold rides a noise floor tracked while nobody is talking — fast down to a quieter room, slow up to a louder one |
+| A single threshold chatters dozens of times per word | Separate open and close margins (hysteresis) |
+| People pause to think — "knight to… f3" | A pause only ends the utterance after `hangoverMs` of quiet |
+| Coughs, chairs, doors | `minSpeechMs` discards bursts too brief to be a sentence, without spending a transcription |
+
+Two cases are less obvious and cost a round of rework each:
+
+- **Someone who starts talking as the microphone opens** would, with a floor
+  seeded from the first sample, have their own voice adopted as the background
+  and never be heard at all. The seed is capped (`maxInitialFloor`).
+- Which means a **genuinely loud room** does open the gate. So the floor is
+  allowed to creep upward *during* speech — slowly enough that a ten-second
+  sentence is untouched, fast enough that a steady roar is reclassified as the
+  floor within a couple of seconds. When the gate then closes with the level
+  still high, nothing actually went quiet: the floor caught up with the room, so
+  the clip holds no speech and is discarded rather than transcribed
+  (`discard`, reason `background`).
+
+The loop around it lives in
+[`useVoiceSession.ts`](../src/voice/useVoiceSession.ts) and does the parts that
+are not pure: sampling every 100ms, skipping a warmup window while the encoder
+settles, and closing and reopening the recorder around each utterance.
+
+It also keeps the microphone **shut while the app is talking**. This is not
+politeness. Playing audio sets `allowsRecording: false`, so a microphone held
+open through an utterance records the app's own voice, when it records anything
+at all. `speak.ts` exposes `isSpeaking()` and `whenQuiet()` for exactly this,
+and the engine contributes `isBusy()` — it will announce its move the instant
+the search finishes, so the microphone stays closed through the search too.
+
+Three guards stop it running away: a `maxUtteranceMs` ceiling, an
+`idleTimeoutMs` that ends the session when nobody has spoken for a while, and a
+consecutive-failure count that gives up rather than looping on a key that will
+never work.
 
 ### 2. Transcription
 

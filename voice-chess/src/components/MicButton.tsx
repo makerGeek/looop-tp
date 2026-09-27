@@ -10,6 +10,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import type { VoiceMode } from '@/state/settingsStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { motion } from '@/theme/tokens';
 import type { VoiceState } from '@/voice/useVoiceSession';
@@ -17,31 +18,42 @@ import type { VoiceState } from '@/voice/useVoiceSession';
 /**
  * The primary control.
  *
- * Two interaction models, chosen in Settings: hold to talk (default, matches
- * the walkie-talkie mental model most people already have) or tap to toggle
- * (better for accessibility and long thinking pauses).
+ * Three interaction models, chosen in Settings: hold to talk (default, matches
+ * the walkie-talkie mental model most people already have), tap to toggle
+ * (better for accessibility and long thinking pauses), or continuous — one tap
+ * hands the microphone over for the rest of the game.
  *
  * The ring tracks live input level so the player can *see* that they are being
- * heard — the single most reassuring thing a voice UI can do.
+ * heard — the single most reassuring thing a voice UI can do. In continuous
+ * mode it is doing double duty: it is also the only evidence that the app is
+ * still listening rather than quietly broken.
  */
 export function MicButton({
   state,
   level,
   mode,
+  active,
   disabled,
   onStart,
   onStop,
 }: {
   state: VoiceState;
   level: number;
-  mode: 'push-to-talk' | 'tap-to-toggle';
+  mode: VoiceMode;
+  /** Continuous mode: whether a session is running. Ignored by the other two. */
+  active?: boolean;
   disabled?: boolean;
   onStart(): void;
   onStop(): void;
 }) {
-  const { colors, typography, spacing } = useTheme();
+  const { colors } = useTheme();
+  const continuous = mode === 'continuous';
   const listening = state === 'listening';
   const busy = state === 'transcribing' || state === 'understanding';
+  // In continuous mode the session outlives any one utterance, so "on" is the
+  // session, not the recorder — otherwise the button would appear to switch
+  // itself off every time the app spoke.
+  const on = continuous ? Boolean(active) : listening;
 
   const pulse = useSharedValue(0);
   const amplitude = useSharedValue(0);
@@ -51,7 +63,9 @@ export function MicButton({
   }, [amplitude, level, listening]);
 
   useEffect(() => {
-    if (busy) {
+    // A slow breath while the session is live but the microphone is shut, so
+    // continuous mode never looks like it has stopped working.
+    if (busy || (continuous && state === 'paused')) {
       pulse.value = withRepeat(
         withSequence(withTiming(1, { duration: 620 }), withTiming(0, { duration: 620 })),
         -1,
@@ -61,7 +75,7 @@ export function MicButton({
       cancelAnimation(pulse);
       pulse.value = withTiming(0, motion.quick);
     }
-  }, [busy, pulse]);
+  }, [busy, continuous, pulse, state]);
 
   const ringStyle = useAnimatedStyle(() => ({
     transform: [{ scale: 1 + amplitude.value * 0.35 + pulse.value * 0.12 }],
@@ -72,12 +86,12 @@ export function MicButton({
     transform: [{ scale: 1 + amplitude.value * 0.06 }],
   }));
 
-  const color = listening ? colors.listening : busy ? colors.warning : colors.accent;
+  const color = on ? colors.listening : busy ? colors.warning : colors.accent;
 
   const pressHandlers =
     mode === 'push-to-talk'
       ? { onPressIn: onStart, onPressOut: onStop }
-      : { onPress: listening ? onStop : onStart };
+      : { onPress: on ? onStop : onStart };
 
   return (
     <View style={styles.wrapper}>
@@ -87,10 +101,8 @@ export function MicButton({
       />
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={listening ? 'Stop listening' : 'Speak your move'}
-        accessibilityHint={
-          mode === 'push-to-talk' ? 'Hold to talk, release when you are done' : 'Tap to start, tap again to send'
-        }
+        accessibilityLabel={accessibilityLabelFor(mode, on)}
+        accessibilityHint={ACCESSIBILITY_HINTS[mode]}
         accessibilityState={{ disabled, busy }}
         disabled={disabled}
         testID="mic-button"
@@ -100,14 +112,70 @@ export function MicButton({
           <MicIcon color={colors.accentText} />
         </Animated.View>
       </Pressable>
-      <Text style={[typography.caption, { color: colors.textMuted, marginTop: spacing.sm }]}>
-        {captionFor(state, mode)}
-      </Text>
     </View>
   );
 }
 
-function captionFor(state: VoiceState, mode: 'push-to-talk' | 'tap-to-toggle'): string {
+/**
+ * The caption lives outside the button, on a line of its own.
+ *
+ * It used to sit under the mic, which made the whole control as wide as
+ * whatever it happened to say — and the control sits in a row between two
+ * button columns. A longer caption quietly stole their space and crowded them
+ * against it. Captions change with state; the layout must not.
+ */
+export function MicCaption({
+  state,
+  mode,
+  active,
+}: {
+  state: VoiceState;
+  mode: VoiceMode;
+  active?: boolean;
+}) {
+  const { colors, typography } = useTheme();
+  const on = mode === 'continuous' ? Boolean(active) : state === 'listening';
+
+  return (
+    <Text
+      numberOfLines={1}
+      style={[typography.caption, { color: colors.textMuted, textAlign: 'center' }]}
+    >
+      {captionFor(state, mode, on)}
+    </Text>
+  );
+}
+
+const ACCESSIBILITY_HINTS: Record<VoiceMode, string> = {
+  'push-to-talk': 'Hold to talk, release when you are done',
+  'tap-to-toggle': 'Tap to start, tap again to send',
+  continuous: 'Tap to hand over the microphone, tap again to take it back',
+};
+
+function accessibilityLabelFor(mode: VoiceMode, on: boolean): string {
+  if (mode === 'continuous') return on ? 'Stop always-on listening' : 'Start always-on listening';
+  return on ? 'Stop listening' : 'Speak your move';
+}
+
+function captionFor(state: VoiceState, mode: VoiceMode, on: boolean): string {
+  if (mode === 'continuous') {
+    if (!on) return state === 'unavailable' ? 'Voice unavailable' : 'Tap to start listening';
+    switch (state) {
+      case 'transcribing':
+        return 'Hearing you out…';
+      case 'understanding':
+        return 'Working it out…';
+      case 'paused':
+        // Not an error and not a stall: the microphone is shut on purpose,
+        // because recording our own voice back is worse than a short gap.
+        return 'One moment…';
+      case 'error':
+        return 'Something went wrong — tap to stop';
+      default:
+        return 'Listening — just talk';
+    }
+  }
+
   switch (state) {
     case 'listening':
       return mode === 'push-to-talk' ? 'Listening — release to send' : 'Listening — tap to send';
@@ -136,7 +204,8 @@ function MicIcon({ color }: { color: string }) {
 }
 
 const styles = StyleSheet.create({
-  wrapper: { alignItems: 'center', justifyContent: 'center' },
+  // Sized to the button, never to the caption.
+  wrapper: { width: 76, alignItems: 'center', justifyContent: 'center' },
   ring: { position: 'absolute', top: 0, width: 76, height: 76, borderRadius: 38 },
   core: {
     width: 76,

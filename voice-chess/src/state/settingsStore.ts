@@ -17,7 +17,11 @@ import type { SpeechVoice } from '@/voice/speak';
  */
 
 export type AppearancePreference = 'system' | 'light' | 'dark';
-export type VoiceMode = 'push-to-talk' | 'tap-to-toggle';
+/**
+ * `continuous` keeps the microphone open and lets `vad.ts` find the sentence
+ * boundaries, so a whole game can be played without touching the screen.
+ */
+export type VoiceMode = 'push-to-talk' | 'tap-to-toggle' | 'continuous';
 
 export interface ModelSettings {
   transcription: string;
