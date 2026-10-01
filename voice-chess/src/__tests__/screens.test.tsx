@@ -37,14 +37,10 @@ jest.mock('react-native-safe-area-context', () => ({
 }));
 
 jest.mock('expo-audio', () => ({
-  useAudioRecorder: () => ({
-    prepareToRecordAsync: jest.fn(async () => undefined),
-    record: jest.fn(),
-    stop: jest.fn(async () => undefined),
-    uri: null,
+  useAudioStream: () => ({
+    stream: { start: jest.fn(async () => undefined), stop: jest.fn(), isStreaming: false },
+    isStreaming: false,
   }),
-  useAudioRecorderState: () => ({ isRecording: false, metering: undefined }),
-  RecordingPresets: { HIGH_QUALITY: {}, LOW_QUALITY: {} },
   requestRecordingPermissionsAsync: jest.fn(async () => ({ granted: true })),
   setAudioModeAsync: jest.fn(async () => undefined),
   createAudioPlayer: () => ({ play: jest.fn(), remove: jest.fn() }),

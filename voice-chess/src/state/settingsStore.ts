@@ -45,6 +45,8 @@ interface SettingsState {
   // Board & feedback
   showLegalMoves: boolean;
   showCoordinates: boolean;
+  /** A live read-out of the microphone level, for diagnosing voice trouble. */
+  showVoiceDiagnostics: boolean;
   hapticsEnabled: boolean;
   autoFlipInPassAndPlay: boolean;
 
@@ -73,13 +75,14 @@ type BooleanSettingKey =
   | 'useModelFallback'
   | 'showLegalMoves'
   | 'showCoordinates'
+  | 'showVoiceDiagnostics'
   | 'hapticsEnabled'
   | 'autoFlipInPassAndPlay';
 
 const API_KEY_SLOT = 'voice-chess.openai-key';
 
 export const DEFAULT_MODELS: ModelSettings = {
-  transcription: 'gpt-4o-mini-transcribe',
+  transcription: 'gpt-transcribe',
   chat: 'gpt-4o-mini',
   tts: 'gpt-4o-mini-tts',
 };
@@ -99,6 +102,7 @@ export const useSettingsStore = create<SettingsState>()(
 
       showLegalMoves: true,
       showCoordinates: true,
+      showVoiceDiagnostics: false,
       hapticsEnabled: true,
       autoFlipInPassAndPlay: true,
 
@@ -140,7 +144,29 @@ export const useSettingsStore = create<SettingsState>()(
     {
       name: 'voice-chess.settings',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 1,
+      version: 2,
+      /**
+       * Model names are persisted, so changing a default does nothing for
+       * anyone who already has the app — their old choice is restored over it.
+       * Superseded models are mapped forward; anything the user picked
+       * themselves that is still current is left alone.
+       */
+      migrate: (persisted, from) => {
+        const state = persisted as Partial<SettingsState> | undefined;
+        if (!state) return persisted as SettingsState;
+        if (from < 2) {
+          const superseded = new Set([
+            'gpt-4o-mini-transcribe',
+            'gpt-4o-transcribe',
+            'whisper-1',
+          ]);
+          const transcription = state.models?.transcription;
+          if (!transcription || superseded.has(transcription)) {
+            state.models = { ...DEFAULT_MODELS, ...state.models, transcription: DEFAULT_MODELS.transcription };
+          }
+        }
+        return state as SettingsState;
+      },
       // The key is a secret and belongs in the keychain, not in a JSON blob.
       partialize: ({ apiKey: _apiKey, apiKeyLoaded: _loaded, ...rest }) => rest,
     }

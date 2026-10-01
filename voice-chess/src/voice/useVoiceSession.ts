@@ -1,10 +1,4 @@
-import {
-  RecordingPresets,
-  requestRecordingPermissionsAsync,
-  setAudioModeAsync,
-  useAudioRecorder,
-  useAudioRecorderState,
-} from 'expo-audio';
+import { requestRecordingPermissionsAsync, setAudioModeAsync, useAudioStream } from 'expo-audio';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { confirmPlayerMove } from '@/chess/narration';
@@ -15,8 +9,10 @@ import { interpretUtterance, type VoiceOutcome } from './interpret';
 import type { CommandName, ParsedUtterance, QuestionName } from './intents';
 import { parseWithModel } from './nlu';
 import { OpenAIError } from './openaiClient';
+import { CAPTURE_SAMPLE_RATE, Capture } from './capture';
 import { isSpeaking, whenQuiet } from './speak';
 import { transcribeAudio } from './transcribe';
+import { SILENCE_DBFS } from './pcm';
 import { createVad } from './vad';
 import type { Square } from '@/chess/types';
 
@@ -34,11 +30,16 @@ import type { Square } from '@/chess/types';
  * 2. **Neither parser decides anything.** Both emit constraints;
  *    `interpretUtterance` intersects them with the legal-move list. An illegal
  *    move cannot reach the board through this path.
- * 3. **Continuous mode owns the microphone, not the finger.** In the two manual
- *    modes a press opens the recorder and a release closes it. In continuous
- *    mode a timer samples the input level, `vad.ts` decides where one sentence
- *    ends and the next begins, and the loop closes and reopens the recorder
- *    around each one. Everything downstream of the clip is shared.
+ * 3. **Capture is raw PCM, not a recorder.** Every mode reads the same 16 kHz
+ *    mono stream. `capture.ts` turns it into clips and reports an honest RMS
+ *    level; `vad.ts` decides where one sentence ends and the next begins.
+ *    In the manual modes the finger decides instead, but the clip is built the
+ *    same way. Everything downstream is shared.
+ *
+ *    This replaced a `MediaRecorder` whose level came from
+ *    `getMaxAmplitude()` — a destructive peak read that two pollers were
+ *    consuming at once, so neither saw the real signal — and whose clips began
+ *    when the microphone opened rather than when the speech did.
  */
 
 export type VoiceState =
@@ -70,36 +71,27 @@ export interface VoiceSessionHandlers {
 /** Grammar results below this fall through to the model, when one is available. */
 const MODEL_FALLBACK_THRESHOLD = 0.8;
 
-/**
- * Metering is off by default in every preset, and without it `metering` is
- * simply `undefined` — no level ring, and no continuous listening at all.
- */
-const RECORDING_OPTIONS = { ...RecordingPresets.HIGH_QUALITY, isMeteringEnabled: true };
-
-/** How often continuous mode reads the input level. */
-const SAMPLE_MS = 100;
-/**
- * The first moments after `record()` are not representative: the encoder is
- * spinning up and the level can read as either silence or a spike. Seeding the
- * noise floor from that would leave the gate stuck open or stuck shut.
- */
-const WARMUP_MS = 300;
 /** Consecutive transcription failures before continuous mode gives up. */
 const MAX_CONSECUTIVE_FAILURES = 3;
 /**
- * Breathing room before the microphone is reopened.
+ * How often we check whether the microphone can be reopened.
  *
- * The engine claims `isBusy` a beat after a move is played, not instantly, and
- * reopening into that gap only to shut again on the next tick means two
- * pointless round trips through the native recorder.
+ * Only needed while the stream is stopped — once it is running, its own buffers
+ * drive everything, so there is no polling at all.
  */
-const REOPEN_DELAY_MS = 250;
+const RESUME_POLL_MS = 250;
+/**
+ * The first buffers after the stream starts are not representative: the input
+ * gain is still settling. Seeding the noise floor from them would leave the
+ * gate stuck open or stuck shut.
+ */
+const WARMUP_MS = 300;
+/** Shown on the ring: how far above the floor counts as "full". */
+const RING_RANGE_DB = 30;
 
 export function useVoiceSession(handlers: VoiceSessionHandlers) {
-  const recorder = useAudioRecorder(RECORDING_OPTIONS);
-  const recorderState = useAudioRecorderState(recorder, 120);
-
   const [state, setState] = useState<VoiceState>('idle');
+  const [level, setLevel] = useState(0);
   const [lastTranscript, setLastTranscript] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   /** Whether a continuous session is running, for the button's label. */
@@ -112,7 +104,7 @@ export function useVoiceSession(handlers: VoiceSessionHandlers) {
   const voiceMode = useSettingsStore((s) => s.voiceMode);
 
   /**
-   * Recorder lifecycle, tracked in refs rather than state.
+   * Lifecycle, tracked in refs rather than state.
    *
    * `start` awaits a permission dialog, and on Android that dialog eats the
    * finger-release that would normally stop the recording. Reading `state`
@@ -122,22 +114,88 @@ export function useVoiceSession(handlers: VoiceSessionHandlers) {
   const phase = useRef<'idle' | 'starting' | 'listening'>('idle');
   const stopRequested = useRef(false);
 
-  // Continuous-mode machinery. Refs throughout: the sampler is a timer, and a
-  // timer that re-subscribed on every render would sample nothing reliably.
   const continuous = useRef(false);
-  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
-  const sampling = useRef(false);
-  const openedAt = useRef(0);
-  const closedAt = useRef(0);
+  const streaming = useRef(false);
+  const startedAt = useRef(0);
+  const processing = useRef(false);
   const failures = useRef(0);
+  const resumeTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const capture = useRef(new Capture());
   const vad = useRef(createVad());
 
+  // `onBuffer` is created before the callbacks it needs, so it reaches them
+  // through refs rather than forcing the stream to be rebuilt on every render.
+  const finishRef = useRef<() => Promise<void>>(async () => undefined);
+  const endRef = useRef<(note?: string) => Promise<void>>(async () => undefined);
+  const stopStreamRef = useRef<() => void>(() => undefined);
+
+  /** What the detector is hearing, for the diagnostics panel. */
+  const diagnostics = useRef({ level: SILENCE_DBFS, floor: SILENCE_DBFS, clipMs: 0, latencyMs: 0 });
+
   // Callers rebuild these callbacks every render; holding them in a ref keeps
-  // the recorder callbacks stable without a dependency treadmill.
+  // the stream callback stable without a dependency treadmill.
   const handlersRef = useRef(handlers);
   useEffect(() => {
     handlersRef.current = handlers;
   }, [handlers]);
+
+  /**
+   * Every buffer from the microphone, about ten times a second.
+   *
+   * This is the only place the detector is driven from, which is the point:
+   * the previous design had two independent pollers reading a destructive peak
+   * counter, so each saw a different and incomplete signal.
+   */
+  const onBuffer = useCallback((buffer: { data: ArrayBuffer; sampleRate: number; channels: number }) => {
+    const db = capture.current.accept(buffer);
+    diagnostics.current.level = db;
+    diagnostics.current.floor = vad.current.floor ?? SILENCE_DBFS;
+
+    // Shown relative to the room, so the ring responds wherever the floor sits.
+    const floor = vad.current.floor ?? SILENCE_DBFS;
+    const unit = Math.max(0, Math.min(1, (db - floor) / RING_RANGE_DB));
+    setLevel((previous) => (Math.abs(previous - unit) > 0.04 ? unit : previous));
+
+    if (!continuous.current || processing.current) return;
+    // Let the input gain settle before believing anything it reports.
+    if (Date.now() - startedAt.current < WARMUP_MS) return;
+
+    // The app is talking, or the engine is about to make it talk. Recording
+    // through that would capture our own voice.
+    if (isSpeaking() || handlersRef.current.isBusy?.()) {
+      capture.current.abandon();
+      vad.current.reset();
+      stopStreamRef.current();
+      setState('paused');
+      return;
+    }
+
+    switch (vad.current.push(db, Date.now()).kind) {
+      case 'speech-start':
+        capture.current.begin();
+        setState('listening');
+        break;
+      case 'utterance':
+        void finishRef.current();
+        break;
+      case 'discard':
+        // A cough, a chair, or the room itself. Costs no transcription.
+        capture.current.abandon();
+        break;
+      case 'idle':
+        void endRef.current("Stopped listening — tap the mic when you're ready.");
+        break;
+      default:
+        break;
+    }
+  }, []);
+
+  const { stream } = useAudioStream({
+    sampleRate: CAPTURE_SAMPLE_RATE,
+    channels: 1,
+    encoding: 'int16',
+    onBuffer,
+  });
 
   const parse = useCallback(
     async (text: string, store: ReturnType<typeof useGameStore.getState>): Promise<ParsedUtterance> => {
@@ -238,48 +296,7 @@ export function useVoiceSession(handlers: VoiceSessionHandlers) {
     [config, chatModel, useModelFallback]
   );
 
-  // ------------------------------------------------------------- the recorder
-
-  /** Opens the microphone. Returns false if it could not be opened. */
-  const openMicrophone = useCallback(async (): Promise<boolean> => {
-    try {
-      // Playing audio turns recording off, so this has to be re-asserted every
-      // time rather than once per session.
-      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
-      // Belt and braces: an interrupted session may still hold the microphone.
-      if (recorder.isRecording) {
-        try {
-          await recorder.stop();
-        } catch {
-          // Nothing to salvage; preparing below will surface any real problem.
-        }
-      }
-      await recorder.prepareToRecordAsync();
-      if (stopRequested.current) return false;
-      recorder.record();
-      openedAt.current = Date.now();
-      phase.current = 'listening';
-      setState('listening');
-      return true;
-    } catch (cause) {
-      phase.current = 'idle';
-      setState('error');
-      setError(describeRecorderError(cause));
-      return false;
-    }
-  }, [recorder]);
-
-  /** Closes the microphone and hands back the clip, if there is one. */
-  const closeMicrophone = useCallback(async (): Promise<string | null> => {
-    phase.current = 'idle';
-    closedAt.current = Date.now();
-    try {
-      await recorder.stop();
-    } catch {
-      // Stopping a recorder that already stopped is not an error worth showing.
-    }
-    return recorder.uri ?? null;
-  }, [recorder]);
+  // -------------------------------------------------------------- the stream
 
   /**
    * Checks that voice can run at all. Returns an explanation, or null when the
@@ -296,13 +313,47 @@ export function useVoiceSession(handlers: VoiceSessionHandlers) {
     return null;
   }, [config]);
 
-  /** transcribe → parse → resolve → act, for one clip. */
+  const startStream = useCallback(async (): Promise<boolean> => {
+    if (streaming.current) return true;
+    try {
+      // Playing audio turns recording off, so this is re-asserted every time
+      // rather than once per session.
+      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+      await stream.start();
+      streaming.current = true;
+      startedAt.current = Date.now();
+      capture.current.abandon();
+      return true;
+    } catch (cause) {
+      streaming.current = false;
+      setState('error');
+      setError(describeRecorderError(cause));
+      return false;
+    }
+  }, [stream]);
+
+  const stopStream = useCallback(() => {
+    if (!streaming.current) return;
+    streaming.current = false;
+    try {
+      stream.stop();
+    } catch {
+      // Stopping a stream that already stopped is not worth surfacing.
+    }
+    capture.current.abandon();
+    setLevel(0);
+  }, [stream]);
+
+  /** transcribe -> parse -> resolve -> act, for one clip. */
   const processClip = useCallback(
     async (uri: string): Promise<boolean> => {
       if (!config) return false;
       setState('transcribing');
       try {
-        const { text } = await transcribeAudio(config, uri, { model: transcriptionModel });
+        const { text, durationMs } = await transcribeAudio(config, uri, {
+          model: transcriptionModel,
+        });
+        diagnostics.current.latencyMs = durationMs;
         setLastTranscript(text);
         if (!text.trim()) {
           setState('idle');
@@ -334,96 +385,50 @@ export function useVoiceSession(handlers: VoiceSessionHandlers) {
     async (note?: string) => {
       continuous.current = false;
       stopRequested.current = true;
-      if (timer.current) {
-        clearInterval(timer.current);
-        timer.current = null;
+      if (resumeTimer.current) {
+        clearInterval(resumeTimer.current);
+        resumeTimer.current = null;
       }
       vad.current.reset();
-      if (phase.current === 'listening') await closeMicrophone();
+      stopStream();
       phase.current = 'idle';
       setActive(false);
       setState((current) => (current === 'error' ? current : 'idle'));
       if (note) useGameStore.getState().say(note, 'system');
     },
-    [closeMicrophone]
+    [stopStream]
   );
 
-  /**
-   * One sampler tick.
-   *
-   * Re-entrant calls are dropped rather than queued: a tick that is waiting on
-   * transcription has already closed the microphone, and a second tick reading
-   * a dead recorder would only confuse the detector.
-   */
-  const sample = useCallback(async () => {
-    if (!continuous.current || sampling.current) return;
-    sampling.current = true;
+  /** Ends the clip, sends it, and decides whether the session carries on. */
+  const finishUtterance = useCallback(async () => {
+    if (processing.current) return;
+    processing.current = true;
     try {
-      // The app is talking, or the engine is about to make it talk. Recording
-      // through that would capture our own voice — and playback switches the
-      // audio session out of recording mode anyway.
-      if (isSpeaking() || handlersRef.current.isBusy?.()) {
-        if (phase.current === 'listening') {
-          await closeMicrophone();
-          // The clip is discarded: whatever is in it, the useful part is over.
-          vad.current.reset();
-        }
-        setState('paused');
-        return;
-      }
+      const clip = await capture.current.finish();
+      if (!clip) return;
+      diagnostics.current.clipMs = clip.durationMs;
 
-      if (phase.current === 'idle') {
-        if (Date.now() - closedAt.current < REOPEN_DELAY_MS) return;
-        await whenQuiet();
-        if (!continuous.current || isSpeaking() || handlersRef.current.isBusy?.()) return;
-        stopRequested.current = false;
-        if (!(await openMicrophone())) await endContinuous();
-        return;
-      }
+      // The microphone is released for the round trip and whatever the app says
+      // in reply. Holding it open would record our own voice back.
+      stopStream();
 
-      if (phase.current !== 'listening') return;
-      // Let the encoder settle before believing anything it reports.
-      if (Date.now() - openedAt.current < WARMUP_MS) return;
-
-      const event = vad.current.push(normalizeMetering(recorder.getStatus().metering), Date.now());
-
-      switch (event.kind) {
-        case 'utterance': {
-          const uri = await closeMicrophone();
-          if (!uri) return;
-          const ok = await processClip(uri);
-          failures.current = ok ? 0 : failures.current + 1;
-          if (failures.current >= MAX_CONSECUTIVE_FAILURES) {
-            await endContinuous('Stopped listening. Tap the mic to try again.');
-          }
-          break;
-        }
-
-        case 'discard':
-          // A cough, a chair, or the room itself. Cycle the recorder so the
-          // next clip starts clean — and never spend a transcription on it.
-          await closeMicrophone();
-          break;
-
-        case 'idle':
-          await endContinuous("Stopped listening — tap the mic when you're ready.");
-          break;
-
-        default:
-          break;
+      const ok = await processClip(clip.uri);
+      failures.current = ok ? 0 : failures.current + 1;
+      if (failures.current >= MAX_CONSECUTIVE_FAILURES) {
+        await endContinuous('Stopped listening. Tap the mic to try again.');
       }
     } finally {
-      sampling.current = false;
+      processing.current = false;
     }
-  }, [closeMicrophone, endContinuous, openMicrophone, processClip, recorder]);
+  }, [endContinuous, processClip, stopStream]);
 
-  // Kept in a ref so the interval always runs the freshest closure without
-  // being torn down and rebuilt — restarting the timer mid-utterance would
-  // reset the detector and lose the sentence.
-  const sampleRef = useRef(sample);
+  // Kept fresh so the stream callback always runs the current closure without
+  // the stream itself being torn down and rebuilt.
   useEffect(() => {
-    sampleRef.current = sample;
-  }, [sample]);
+    finishRef.current = finishUtterance;
+    endRef.current = endContinuous;
+    stopStreamRef.current = stopStream;
+  }, [endContinuous, finishUtterance, stopStream]);
 
   const beginContinuous = useCallback(async () => {
     if (continuous.current) return;
@@ -443,24 +448,35 @@ export function useVoiceSession(handlers: VoiceSessionHandlers) {
     vad.current.reset();
     setActive(true);
 
-    if (!(await openMicrophone())) {
+    if (!(await startStream())) {
       await endContinuous();
       return;
     }
+    setState('listening');
 
+    // Only runs while the stream is stopped — once it is going, its own buffers
+    // drive the loop and nothing polls.
     const interval = setInterval(() => {
-      void sampleRef.current();
-    }, SAMPLE_MS);
-    // The session may have been ended while the microphone was opening — the
-    // mode switched in Settings, or the screen left. `endContinuous` has
-    // already run and found no timer to clear, so this one would tick for the
-    // life of the app.
+      if (!continuous.current || streaming.current || processing.current) return;
+      if (isSpeaking() || handlersRef.current.isBusy?.()) return;
+      void (async () => {
+        await whenQuiet();
+        if (!continuous.current || streaming.current || processing.current) return;
+        if (isSpeaking() || handlersRef.current.isBusy?.()) return;
+        vad.current.reset();
+        if (await startStream()) setState('listening');
+      })();
+    }, RESUME_POLL_MS);
+
+    // The session may have ended while the microphone was opening — the mode
+    // switched in Settings, or the screen left. `endContinuous` has already run
+    // and found no timer to clear, so this one would tick for the app's life.
     if (!continuous.current) {
       clearInterval(interval);
       return;
     }
-    timer.current = interval;
-  }, [checkReady, endContinuous, openMicrophone]);
+    resumeTimer.current = interval;
+  }, [checkReady, endContinuous, startStream]);
 
   // ------------------------------------------------------------- manual modes
 
@@ -486,16 +502,23 @@ export function useVoiceSession(handlers: VoiceSessionHandlers) {
     }
 
     // The press is already over — typically the permission dialog swallowed the
-    // release. Opening a recording now would leave one running with nothing to
-    // close it, and the next attempt would fail on an already-busy recorder.
+    // release. Opening the microphone now would leave it running with nothing
+    // to close it.
     if (stopRequested.current) {
       phase.current = 'idle';
       setState('idle');
       return;
     }
 
-    await openMicrophone();
-  }, [beginContinuous, checkReady, openMicrophone, voiceMode]);
+    if (!(await startStream())) {
+      phase.current = 'idle';
+      return;
+    }
+    // The finger decides the boundaries here, so collection starts at once.
+    capture.current.begin();
+    phase.current = 'listening';
+    setState('listening');
+  }, [beginContinuous, checkReady, startStream, voiceMode]);
 
   const stop = useCallback(async () => {
     if (continuous.current) {
@@ -508,14 +531,17 @@ export function useVoiceSession(handlers: VoiceSessionHandlers) {
       return;
     }
     if (phase.current !== 'listening') return;
+    phase.current = 'idle';
 
-    const uri = await closeMicrophone();
-    if (!uri) {
+    const clip = await capture.current.finish();
+    stopStream();
+    if (!clip) {
       setState('idle');
       return;
     }
-    await processClip(uri);
-  }, [closeMicrophone, endContinuous, processClip]);
+    diagnostics.current.clipMs = clip.durationMs;
+    await processClip(clip.uri);
+  }, [endContinuous, processClip, stopStream]);
 
   const cancel = useCallback(async () => {
     if (continuous.current) {
@@ -523,10 +549,10 @@ export function useVoiceSession(handlers: VoiceSessionHandlers) {
       return;
     }
     stopRequested.current = true;
-    if (phase.current === 'listening') await closeMicrophone();
     phase.current = 'idle';
+    stopStream();
     setState('idle');
-  }, [closeMicrophone, endContinuous]);
+  }, [endContinuous, stopStream]);
 
   // Switching away from continuous mode in Settings, or leaving the screen,
   // must not leave a timer holding the microphone open.
@@ -537,17 +563,17 @@ export function useVoiceSession(handlers: VoiceSessionHandlers) {
   useEffect(
     () => () => {
       continuous.current = false;
-      if (timer.current) clearInterval(timer.current);
-      timer.current = null;
+      if (resumeTimer.current) clearInterval(resumeTimer.current);
+      resumeTimer.current = null;
     },
     []
   );
 
   return {
     state,
-    /** 0–1 input level, for the mic animation. */
-    level: normalizeMetering(recorderState.metering),
-    isRecording: recorderState.isRecording,
+    /** 0–1 input level relative to the room, for the mic animation. */
+    level,
+    isRecording: state === 'listening',
     /** Whether a continuous session is running. */
     active,
     lastTranscript,
@@ -555,6 +581,13 @@ export function useVoiceSession(handlers: VoiceSessionHandlers) {
     start,
     stop,
     cancel,
+    /**
+     * Live numbers for the diagnostics panel, as the ref itself.
+     *
+     * These change ten times a second; rendering from them would re-render the
+     * whole screen at the buffer rate. The panel samples them on its own clock.
+     */
+    diagnostics,
     /** Runs raw text through the full pipeline (used by the type-a-move field). */
     submitText: handleTranscript,
   };
@@ -575,11 +608,4 @@ function describeRecorderError(cause: unknown): string {
 function isPlayersTurn(store: ReturnType<typeof useGameStore.getState>): boolean {
   if (store.mode === 'pass-and-play') return true;
   return store.snapshot.turn === store.playerColor;
-}
-
-/** Metering is reported in dBFS (about -60 … 0). Map it to a friendly 0–1. */
-function normalizeMetering(metering: number | undefined): number {
-  if (metering === undefined || Number.isNaN(metering)) return 0;
-  const clamped = Math.max(-60, Math.min(0, metering));
-  return (clamped + 60) / 60;
 }

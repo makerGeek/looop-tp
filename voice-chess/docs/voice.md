@@ -34,13 +34,32 @@
 
 ## Stage by stage
 
-### 1. Recording
+### 1. Capture — [`pcm.ts`](../src/voice/pcm.ts), [`capture.ts`](../src/voice/capture.ts)
 
-`expo-audio`, `RecordingPresets.HIGH_QUALITY` **plus `isMeteringEnabled: true`**,
-straight to the cache directory. That flag matters more than it looks: no preset
-sets it, and without it `metering` is simply `undefined` — no input-level ring,
-and nothing for the voice-activity detector to detect. It fails silently rather
-than loudly, so there is a test asserting the recorder is configured with it.
+Raw PCM from `useAudioStream`: **16 kHz, mono, int16**, which is exactly what
+transcription models want. Clips are assembled in JS and written as WAV.
+
+This replaced a `MediaRecorder` recording 44.1 kHz stereo AAC, and the three
+things wrong with that are worth recording, because together they were why both
+halves of the voice loop felt broken:
+
+1. **The level came from `getMaxAmplitude()`, a destructive read.** It returns
+   the peak *since the last call*. Two things were calling it — the detector's
+   sampler and the hook driving the level ring — so each reset the other's
+   window and both saw a random subset of the peaks.
+2. **It was a peak, not an average.** A chair scraping reads the same as a
+   syllable. The level is now an RMS over the actual samples, which is both
+   steadier and what "loudness" actually means.
+3. **The clip began when the microphone opened.** A sentence spoken after
+   twenty seconds of quiet was uploaded as twenty seconds of silence with some
+   speech on the end — the input transcription models handle worst, because
+   they fill silence with invented text.
+
+The fix for the third is a **pre-roll ring buffer**. The detector cannot know
+speech has started until it has heard some, so a clip beginning at that moment
+is missing its own first syllable — "e4" becomes "four". The last 400 ms is
+always on hand, so the clip starts slightly in the past and ends shortly after
+the speech stops. Nothing else is ever sent.
 
 Three interaction models, selectable in Settings:
 
@@ -60,10 +79,16 @@ finished talking?* Nothing on the device will say so, and sending a fixed-length
 clip every few seconds is both wasteful and unpleasant — it cuts people off
 mid-sentence and pays to transcribe silence.
 
-What the recorder does give us is an input level. `vad.ts` turns a stream of
-those into utterance boundaries, and it is a **pure reducer**: state plus sample
-in, state plus event out. No timers, no recorder, no React. That is the whole
-reason end-of-speech behaviour is testable rather than guessed at on a phone.
+What we do have is an input level. `vad.ts` turns a stream of those into
+utterance boundaries, and it is a **pure reducer**: state plus sample in, state
+plus event out. No timers, no recorder, no React. That is the whole reason
+end-of-speech behaviour is testable rather than guessed at on a phone.
+
+Levels are **dBFS**, straight from `rmsDbfs`. An earlier version worked on a
+0–1 scale mapped from an assumed −60…0 dB range, which was wrong twice over: the
+platforms report silence as −160, and a margin written as "0.1" is not a
+quantity anyone can reason about. Speech stands above a room by a number of
+decibels, so decibels are what the thresholds are written in.
 
 Four details carry the weight:
 
@@ -79,18 +104,25 @@ Two cases are less obvious and cost a round of rework each:
 - **Someone who starts talking as the microphone opens** would, with a floor
   seeded from the first sample, have their own voice adopted as the background
   and never be heard at all. The seed is capped (`maxInitialFloor`).
-- Which means a **genuinely loud room** does open the gate. So the floor is
-  allowed to creep upward *during* speech — slowly enough that a ten-second
-  sentence is untouched, fast enough that a steady roar is reclassified as the
-  floor within a couple of seconds. When the gate then closes with the level
-  still high, nothing actually went quiet: the floor caught up with the room, so
-  the clip holds no speech and is discarded rather than transcribed
-  (`discard`, reason `background`).
+- Which means a **genuinely loud room** can open the gate. The discriminator is
+  **dynamic range**: speech is never steady — it has plosives, vowels and gaps
+  between words — while a fan or a road holds one level indefinitely. A burst
+  that runs longer than `dynamicRangeAfterMs` while varying by less than
+  `minDynamicRangeDb` is machinery, and is discarded rather than transcribed
+  (`discard`, reason `background`), with the floor lifted to what was heard so
+  it does not immediately re-trigger.
+
+  An earlier attempt let the noise floor creep upward *during* speech to escape
+  such a room. On a decibel scale that escalates — each rise lifts the target,
+  which lifts the floor — and it cut long sentences off partway through. There
+  is a test for exactly that.
 
 The loop around it lives in
 [`useVoiceSession.ts`](../src/voice/useVoiceSession.ts) and does the parts that
-are not pure: sampling every 100ms, skipping a warmup window while the encoder
-settles, and closing and reopening the recorder around each utterance.
+are not pure: reading each buffer as it arrives, skipping a warmup window while
+the input gain settles, and releasing and retaking the microphone around each
+utterance. There is no polling at all — the stream's own buffers drive
+everything.
 
 It also keeps the microphone **shut while the app is talking**. This is not
 politeness. Playing audio sets `allowsRecording: false`, so a microphone held
@@ -103,6 +135,15 @@ Three guards stop it running away: a `maxUtteranceMs` ceiling, an
 `idleTimeoutMs` that ends the session when nobody has spoken for a while, and a
 consecutive-failure count that gives up rather than looping on a key that will
 never work.
+
+### Diagnosing it on a real device
+
+Settings → **Voice diagnostics** puts a live read-out under the controls: the
+room's level, the learnt noise floor, the level at which the gate opens, whether
+it is open right now, the length of the last clip and the round-trip time. Voice
+complaints are otherwise almost impossible to act on — "it keeps cutting me off"
+could be the threshold, the floor, the microphone gain or the transcription, and
+these four numbers say which.
 
 ### 2. Transcription
 

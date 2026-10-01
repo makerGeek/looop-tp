@@ -5,58 +5,55 @@
  * none was reachable through the UI tests: they only appear when the permission
  * dialog delays `start()` past the finger-release that was meant to stop it.
  *
- * The continuous-mode cases run the real sampler against a fake recorder whose
- * metering the test drives, which is the only way to exercise the loop's
- * close-transcribe-reopen cycle without a microphone.
+ * The continuous-mode cases feed synthetic PCM into the real stream callback,
+ * so the detector, the capture buffer and the loop all run for real. The only
+ * thing faked is the microphone itself.
  */
 
-interface MockRecorder {
-  prepareToRecordAsync: jest.Mock<Promise<undefined>, []>;
-  record: jest.Mock<void, []>;
-  stop: jest.Mock<Promise<void>, []>;
-  getStatus: jest.Mock<{ isRecording: boolean; metering: number }, []>;
-  metering: number;
-  uri: string | null;
-  isRecording: boolean;
+const SAMPLE_RATE = 16_000;
+/** One buffer's worth, matching what the native stream delivers. */
+const BUFFER_SAMPLES = SAMPLE_RATE / 10;
+
+interface MockStream {
+  start: jest.Mock<Promise<void>, []>;
+  stop: jest.Mock<void, []>;
+  isStreaming: boolean;
 }
 
-const mockRecorder: MockRecorder = {
-  prepareToRecordAsync: jest.fn(async () => undefined),
-  record: jest.fn(() => {
-    mockRecorder.isRecording = true;
+const mockStream: MockStream = {
+  start: jest.fn(async () => {
+    mockStream.isStreaming = true;
   }),
-  stop: jest.fn(async () => {
-    mockRecorder.isRecording = false;
+  stop: jest.fn(() => {
+    mockStream.isStreaming = false;
   }),
-  /** dBFS, as the native recorder reports it. -60 is silence. */
-  getStatus: jest.fn((): { isRecording: boolean; metering: number } => ({
-    isRecording: mockRecorder.isRecording,
-    metering: mockRecorder.metering,
-  })),
-  metering: -60,
-  uri: null as string | null,
-  isRecording: false,
+  isStreaming: false,
 };
+
+/** The hook's own `onBuffer`, captured so a test can drive the microphone. */
+let mockOnBuffer:
+  | ((buffer: { data: ArrayBuffer; sampleRate: number; channels: number }) => void)
+  | null = null;
+const mockUseAudioStream = jest.fn();
 
 /** Resolves only when the test lets it, standing in for the permission dialog. */
 let mockReleasePermission: (() => void) | null = null;
 /** Set by the continuous tests, which need permission to be granted at once. */
 let mockGrantImmediately = false;
 
-const mockTranscribe = jest.fn(async () => ({ text: 'pawn to e4' }));
+const mockTranscribe = jest.fn(async () => ({ text: 'pawn to e4', durationMs: 10 }));
 jest.mock('./transcribe', () => ({
   transcribeAudio: (...args: unknown[]) => mockTranscribe(...(args as [])),
 }));
 
-const mockUseAudioRecorder = jest.fn(() => mockRecorder);
-
 jest.mock('expo-audio', () => ({
-  useAudioRecorder: (...args: unknown[]) => mockUseAudioRecorder(...(args as [])),
-  useAudioRecorderState: () => ({
-    isRecording: mockRecorder.isRecording,
-    metering: mockRecorder.metering,
-  }),
-  RecordingPresets: { HIGH_QUALITY: {}, LOW_QUALITY: {} },
+  useAudioStream: (options: {
+    onBuffer?: (buffer: { data: ArrayBuffer; sampleRate: number; channels: number }) => void;
+  }) => {
+    mockUseAudioStream(options);
+    mockOnBuffer = options.onBuffer ?? null;
+    return { stream: mockStream, isStreaming: mockStream.isStreaming };
+  },
   requestRecordingPermissionsAsync: jest.fn(() => {
     if (mockGrantImmediately) return Promise.resolve({ granted: true });
     return new Promise((resolve) => {
@@ -68,8 +65,17 @@ jest.mock('expo-audio', () => ({
 }));
 
 jest.mock('expo-file-system', () => ({
-  File: class {},
-  Directory: class {},
+  File: class {
+    uri = 'file:///utterance.wav';
+    exists = false;
+    create() {}
+    write() {}
+    delete() {}
+  },
+  Directory: class {
+    exists = true;
+    create() {}
+  },
   Paths: { cache: {}, document: {} },
   UploadType: { MULTIPART: 1 },
 }));
@@ -82,6 +88,35 @@ import { useSettingsStore } from '@/state/settingsStore';
 import { useVoiceSession } from './useVoiceSession';
 /* eslint-enable import/first */
 
+/**
+ * Levels in dBFS, as `rmsDbfs` would report them for a real room.
+ * A sine's RMS is its peak over root two, so the amplitudes below are chosen
+ * to land near these figures.
+ */
+const QUIET = 0.001; // amplitude: a still room, about -60 dBFS
+const SPEAKING = 0.15; // about -19 dBFS — someone talking at the phone
+
+/**
+ * The detector works in wall-clock time, so pushing two seconds of audio
+ * synchronously would look like two seconds arriving in one instant. Time is
+ * driven by hand instead: each buffer advances the clock by its own duration.
+ * Real timers are left alone, so `waitFor` and the resume poll still work.
+ */
+let mockNow = 1_700_000_000_000;
+
+/** Feeds `ms` of a steady tone at `amplitude` through the hook's callback. */
+function pushAudio(amplitude: number, ms: number): void {
+  const buffers = Math.max(1, Math.round(ms / 100));
+  for (let n = 0; n < buffers; n += 1) {
+    const samples = new Int16Array(BUFFER_SAMPLES);
+    for (let i = 0; i < samples.length; i += 1) {
+      samples[i] = Math.round(Math.sin((i / 40) * 2 * Math.PI) * amplitude * 32767);
+    }
+    mockNow += 100;
+    mockOnBuffer?.({ data: samples.buffer, sampleRate: SAMPLE_RATE, channels: 1 });
+  }
+}
+
 const handlers = {
   say: jest.fn(async () => undefined),
   repeat: jest.fn(async () => undefined),
@@ -90,14 +125,22 @@ const handlers = {
   onQuestion: jest.fn(),
 };
 
+beforeAll(() => {
+  jest.spyOn(Date, 'now').mockImplementation(() => mockNow);
+});
+
+afterAll(() => {
+  jest.restoreAllMocks();
+});
+
 beforeEach(async () => {
   jest.clearAllMocks();
-  mockRecorder.isRecording = false;
-  mockRecorder.uri = null;
-  mockRecorder.metering = -60;
+  jest.spyOn(Date, 'now').mockImplementation(() => mockNow);
+  mockOnBuffer = null;
+  mockStream.isStreaming = false;
   mockReleasePermission = null;
   mockGrantImmediately = false;
-  mockTranscribe.mockResolvedValue({ text: 'pawn to e4' });
+  mockTranscribe.mockResolvedValue({ text: 'pawn to e4', durationMs: 10 });
   useSettingsStore.setState({ voiceMode: 'push-to-talk' });
   // A key must be present, or `start` bails before ever touching the mockRecorder.
   await useSettingsStore.getState().setApiKey('sk-test-key');
@@ -108,7 +151,7 @@ afterAll(async () => {
 });
 
 describe('microphone lifecycle', () => {
-  it('does not leave a recording open when the press ends during startup', async () => {
+  it('does not leave the microphone open when the press ends during startup', async () => {
     const { result } = await renderHook(() => useVoiceSession(handlers));
 
     // Press: `start` suspends on the permission dialog.
@@ -125,8 +168,8 @@ describe('microphone lifecycle', () => {
       await Promise.resolve();
     });
 
-    expect(mockRecorder.record).not.toHaveBeenCalled();
-    expect(mockRecorder.isRecording).toBe(false);
+    expect(mockStream.start).not.toHaveBeenCalled();
+    expect(mockStream.isStreaming).toBe(false);
   });
 
   it('records normally when the press outlasts the permission dialog', async () => {
@@ -140,8 +183,8 @@ describe('microphone lifecycle', () => {
       await Promise.resolve();
     });
 
-    expect(mockRecorder.record).toHaveBeenCalledTimes(1);
-    expect(mockRecorder.isRecording).toBe(true);
+    expect(mockStream.start).toHaveBeenCalledTimes(1);
+    expect(mockStream.isStreaming).toBe(true);
     expect(result.current.state).toBe('listening');
   });
 
@@ -157,51 +200,45 @@ describe('microphone lifecycle', () => {
       await Promise.resolve();
     });
 
-    expect(mockRecorder.prepareToRecordAsync).toHaveBeenCalledTimes(1);
-    expect(mockRecorder.record).toHaveBeenCalledTimes(1);
+    expect(mockStream.start).toHaveBeenCalledTimes(1);
   });
 
-  it('releases a microphone left open by an interrupted session', async () => {
-    // Simulate the state the old bug left behind.
-    mockRecorder.isRecording = true;
-
+  it('sends what was said between the press and the release', async () => {
+    mockGrantImmediately = true;
     const { result } = await renderHook(() => useVoiceSession(handlers));
+
     await act(async () => {
-      result.current.start();
+      await result.current.start();
     });
     await act(async () => {
-      mockReleasePermission?.();
-      await Promise.resolve();
+      pushAudio(SPEAKING, 600);
+    });
+    await act(async () => {
+      await result.current.stop();
     });
 
-    expect(mockRecorder.stop).toHaveBeenCalled();
-    expect(mockRecorder.record).toHaveBeenCalledTimes(1);
+    expect(mockTranscribe).toHaveBeenCalledTimes(1);
+    expect(mockStream.stop).toHaveBeenCalled();
   });
 });
 
-describe('recorder configuration', () => {
-  it('asks for metering, which no preset enables', async () => {
-    // Without this the recorder reports `metering: undefined`, which means no
-    // input-level ring and — since the detector has nothing to detect —
-    // no continuous listening at all. It is worth an assertion of its own
-    // because everything downstream fails silently rather than loudly.
+describe('capture configuration', () => {
+  it('asks the stream for 16 kHz mono PCM', async () => {
+    // What transcription models want. The old path recorded 44.1 kHz stereo
+    // AAC, which is larger, slower to upload and no more accurate.
     await renderHook(() => useVoiceSession(handlers));
 
-    expect(mockUseAudioRecorder).toHaveBeenCalledWith(
-      expect.objectContaining({ isMeteringEnabled: true })
+    expect(mockUseAudioStream).toHaveBeenCalledWith(
+      expect.objectContaining({ sampleRate: 16_000, channels: 1, encoding: 'int16' })
     );
   });
 });
 
 describe('continuous listening', () => {
-  /** Waits out real time — the sampler and the detector both run off the clock. */
-  const passes = (ms: number) => act(async () => {
-    await new Promise((resolve) => setTimeout(resolve, ms));
-  });
-
-  const speak = (dbfs: number) => {
-    mockRecorder.metering = dbfs;
-  };
+  const passes = (ms: number) =>
+    act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, ms));
+    });
 
   beforeEach(() => {
     mockGrantImmediately = true;
@@ -227,11 +264,13 @@ describe('continuous listening', () => {
     });
 
     expect(result.current.active).toBe(true);
-    expect(mockRecorder.record).toHaveBeenCalledTimes(1);
+    expect(mockStream.start).toHaveBeenCalledTimes(1);
 
-    // Two seconds of silence: still listening, and no clip has been sent.
-    await passes(2_000);
-    expect(mockRecorder.isRecording).toBe(true);
+    // Two seconds of a quiet room: still listening, nothing sent.
+    await act(async () => {
+      pushAudio(QUIET, 2_000);
+    });
+    expect(mockStream.isStreaming).toBe(true);
     expect(mockTranscribe).not.toHaveBeenCalled();
 
     await act(async () => {
@@ -241,29 +280,34 @@ describe('continuous listening', () => {
   });
 
   it('transcribes a sentence when it ends, then reopens for the next one', async () => {
-    mockRecorder.uri = 'file:///clip.m4a';
     const { result } = await renderHook(() => useVoiceSession(handlers));
 
     await act(async () => {
       await result.current.start();
     });
-    // Warmup, so the noise floor is seeded from the quiet room.
-    await passes(500);
+    // Warmup, so the floor is learnt from the quiet room.
+    await act(async () => {
+      pushAudio(QUIET, 500);
+    });
 
-    speak(-6);
-    await passes(600);
-    // Still mid-sentence: nothing sent yet.
+    await act(async () => {
+      pushAudio(SPEAKING, 700);
+    });
     expect(mockTranscribe).not.toHaveBeenCalled();
 
-    speak(-60);
+    await act(async () => {
+      pushAudio(QUIET, 1_200);
+    });
+
     await waitFor(() => expect(mockTranscribe).toHaveBeenCalledTimes(1), { timeout: 3_000 });
 
     // The move reached the board through the normal pipeline.
     await waitFor(() => expect(useGameStore.getState().snapshot.history).toHaveLength(1));
     expect(useGameStore.getState().snapshot.history[0].san).toBe('e4');
 
-    // And the microphone came back for the next sentence, unprompted.
-    await waitFor(() => expect(mockRecorder.record.mock.calls.length).toBeGreaterThan(1), {
+    // The microphone was released for the round trip, then taken back.
+    expect(mockStream.stop).toHaveBeenCalled();
+    await waitFor(() => expect(mockStream.start.mock.calls.length).toBeGreaterThan(1), {
       timeout: 3_000,
     });
     expect(result.current.active).toBe(true);
@@ -273,24 +317,63 @@ describe('continuous listening', () => {
     });
   });
 
+  it('sends a clip that begins before the speech did', async () => {
+    // The pre-roll is the whole reason clips are built by hand: without it the
+    // first syllable is missing, and in chess that is usually the piece.
+    const { result } = await renderHook(() => useVoiceSession(handlers));
+    await act(async () => {
+      await result.current.start();
+    });
+    await act(async () => {
+      pushAudio(QUIET, 500);
+    });
+    await act(async () => {
+      pushAudio(SPEAKING, 700);
+      pushAudio(QUIET, 1_200);
+    });
+
+    await waitFor(() => expect(mockTranscribe).toHaveBeenCalledTimes(1), { timeout: 3_000 });
+    // 700ms of speech, and the clip is longer than that.
+    expect(result.current.diagnostics.current.clipMs).toBeGreaterThan(700);
+
+    await act(async () => {
+      await result.current.stop();
+    });
+  });
+
   it('does not spend a transcription on a cough', async () => {
-    mockRecorder.uri = 'file:///clip.m4a';
     const { result } = await renderHook(() => useVoiceSession(handlers));
 
     await act(async () => {
       await result.current.start();
     });
-    await passes(500);
-
-    // One brief spike, well under the minimum speech length.
-    speak(-6);
-    await passes(100);
-    speak(-60);
-    await passes(1_500);
+    await act(async () => {
+      pushAudio(QUIET, 500);
+      pushAudio(SPEAKING, 100); // far under the minimum speech length
+      pushAudio(QUIET, 1_500);
+    });
 
     expect(mockTranscribe).not.toHaveBeenCalled();
-    // The recorder was cycled rather than left holding a useless clip.
-    expect(mockRecorder.stop).toHaveBeenCalled();
+
+    await act(async () => {
+      await result.current.stop();
+    });
+  });
+
+  it('does not spend a transcription on a steady noise', async () => {
+    // Flat and loud: a fan or a passing lorry, not a person.
+    const { result } = await renderHook(() => useVoiceSession(handlers));
+
+    await act(async () => {
+      await result.current.start();
+    });
+    await act(async () => {
+      pushAudio(QUIET, 500);
+      pushAudio(SPEAKING, 3_000); // unvarying for three seconds
+      pushAudio(QUIET, 1_200);
+    });
+
+    expect(mockTranscribe).not.toHaveBeenCalled();
 
     await act(async () => {
       await result.current.stop();
@@ -298,8 +381,6 @@ describe('continuous listening', () => {
   });
 
   it('shuts the microphone while the engine is about to talk', async () => {
-    // The engine announces its move the moment it finishes searching, and
-    // recording through that would capture the app's own voice.
     let thinking = false;
     const { result } = await renderHook(() =>
       useVoiceSession({ ...handlers, isBusy: () => thinking })
@@ -308,17 +389,22 @@ describe('continuous listening', () => {
     await act(async () => {
       await result.current.start();
     });
-    await passes(300);
-    expect(mockRecorder.isRecording).toBe(true);
+    await act(async () => {
+      pushAudio(QUIET, 400);
+    });
+    expect(mockStream.isStreaming).toBe(true);
 
     thinking = true;
+    await act(async () => {
+      pushAudio(QUIET, 200);
+    });
     await waitFor(() => expect(result.current.state).toBe('paused'), { timeout: 2_000 });
-    expect(mockRecorder.isRecording).toBe(false);
+    expect(mockStream.isStreaming).toBe(false);
 
-    // …and takes it back afterwards, without the player touching anything.
+    // …and takes it back afterwards.
     thinking = false;
-    await waitFor(() => expect(result.current.state).toBe('listening'), { timeout: 2_000 });
-    expect(mockRecorder.isRecording).toBe(true);
+    await waitFor(() => expect(result.current.state).toBe('listening'), { timeout: 3_000 });
+    expect(mockStream.isStreaming).toBe(true);
 
     await act(async () => {
       await result.current.stop();
@@ -328,26 +414,23 @@ describe('continuous listening', () => {
   it(
     'stops the session rather than looping on a broken key',
     async () => {
-      mockRecorder.uri = 'file:///clip.m4a';
       mockTranscribe.mockRejectedValue(new Error('401'));
       const { result } = await renderHook(() => useVoiceSession(handlers));
 
       await act(async () => {
         await result.current.start();
       });
-      await passes(500);
 
-      // Three sentences, three failures. Each cycle has to outlast the
-      // hangover, so this test is deliberately slow.
       for (let attempt = 0; attempt < 3; attempt += 1) {
-        speak(-6);
-        await passes(500);
-        speak(-60);
-        await passes(1_600);
+        await act(async () => {
+          pushAudio(QUIET, 500);
+          pushAudio(SPEAKING, 700);
+          pushAudio(QUIET, 1_200);
+        });
+        await passes(400);
       }
 
-      await waitFor(() => expect(result.current.active).toBe(false), { timeout: 5_000 });
-      // It gave up rather than burning the battery on a key that will not work.
+      await waitFor(() => expect(result.current.active).toBe(false), { timeout: 6_000 });
       expect(mockTranscribe.mock.calls.length).toBeLessThanOrEqual(3);
       expect(result.current.error).toBeTruthy();
     },
@@ -360,13 +443,13 @@ describe('continuous listening', () => {
     await act(async () => {
       await result.current.start();
     });
-    expect(mockRecorder.isRecording).toBe(true);
+    expect(mockStream.isStreaming).toBe(true);
 
     await act(async () => {
       useSettingsStore.setState({ voiceMode: 'tap-to-toggle' });
     });
 
-    await waitFor(() => expect(mockRecorder.isRecording).toBe(false));
+    await waitFor(() => expect(mockStream.isStreaming).toBe(false));
     expect(result.current.active).toBe(false);
   });
 });

@@ -24,6 +24,7 @@ import type { PieceSymbol, Square } from '@/chess/types';
 import { ConversationLog } from '@/components/ConversationLog';
 import { GameHeader } from '@/components/GameHeader';
 import { MicButton, MicCaption } from '@/components/MicButton';
+import { VoiceDiagnostics } from '@/components/VoiceDiagnostics';
 import { MoveList } from '@/components/MoveList';
 import { PromotionSheet } from '@/components/PromotionSheet';
 import { Board } from '@/components/board/Board';
@@ -37,6 +38,7 @@ import * as dialogue from '@/voice/dialogue';
 import type { CommandName, QuestionName } from '@/voice/intents';
 import { useSpeaker } from '@/voice/useSpeaker';
 import { useVoiceSession } from '@/voice/useVoiceSession';
+import { DEFAULT_VAD_OPTIONS } from '@/voice/vad';
 
 /**
  * The game screen.
@@ -73,6 +75,7 @@ export default function GameScreen() {
   const autoFlip = useSettingsStore((s) => s.autoFlipInPassAndPlay);
   const voiceEnabled = useSettingsStore((s) => s.voiceEnabled);
   const voiceMode = useSettingsStore((s) => s.voiceMode);
+  const showVoiceDiagnostics = useSettingsStore((s) => s.showVoiceDiagnostics);
   const toggleSetting = useSettingsStore((s) => s.toggle);
 
   const speaker = useSpeaker();
@@ -441,6 +444,14 @@ export default function GameScreen() {
         </View>
 
         <MicCaption state={voice.state} mode={voiceMode} active={voice.active} />
+
+        {showVoiceDiagnostics ? (
+          <VoiceDiagnostics
+            values={voice.diagnostics}
+            openMargin={DEFAULT_VAD_OPTIONS.openMargin}
+            transcript={voice.lastTranscript}
+          />
+        ) : null}
 
         <View style={[styles.typeRow, { gap: spacing.sm }]}>
           <TextInput

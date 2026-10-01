@@ -112,6 +112,12 @@ export default function SettingsScreen() {
           </View>
         </SettingRow>
         <ToggleRow
+          label="Voice diagnostics"
+          hint="Show the microphone level, the noise floor and where the gate opens. Useful when voice is misbehaving."
+          value={settings.showVoiceDiagnostics}
+          onChange={() => settings.toggle('showVoiceDiagnostics')}
+        />
+        <ToggleRow
           label="Smart parsing"
           hint="Ask the language model when the built-in parser is unsure. Legality is always decided by the chess engine, never the model."
           value={settings.useModelFallback}

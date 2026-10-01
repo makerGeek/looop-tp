@@ -108,8 +108,10 @@ voice-chess/
 │   │   ├── dialogue.ts         What the app says, and how
 │   │   ├── transcribe.ts       Speech-to-text
 │   │   ├── speak.ts            Text-to-speech, queued so lines never overlap
+│   │   ├── pcm.ts              RMS levels, ring buffer, WAV encoding (pure)
+│   │   ├── capture.ts          Builds clips that start before the speech does
 │   │   ├── vad.ts              Where one spoken sentence ends (pure reducer)
-│   │   └── useVoiceSession.ts  The record → parse → act loop
+│   │   └── useVoiceSession.ts  The capture → parse → act loop
 │   ├── engine/                 The thinking half
 │   │   ├── EngineProvider.tsx  Provides the engine to the app
 │   │   ├── localEngine.ts      The engine: negamax + quiescence, pure JS

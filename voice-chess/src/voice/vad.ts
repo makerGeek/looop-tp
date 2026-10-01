@@ -12,6 +12,12 @@
  * recorder and no React. That is what makes end-of-speech behaviour something
  * we can actually test, instead of something we guess at on a device.
  *
+ * Levels are **dBFS**, straight from `rmsDbfs`. The first version worked on a
+ * 0–1 scale mapped from an assumed -60…0 dB range, which was wrong twice over:
+ * the platforms report silence as -160, and a margin expressed as "0.1" is not
+ * a quantity anyone can reason about. Speech stands above a room by a number of
+ * decibels, so decibels are what the thresholds are written in.
+ *
  * Three details carry most of the weight:
  *
  * 1. **The threshold follows the room, not a constant.** A café is louder than
@@ -29,9 +35,9 @@
  */
 
 export interface VadOptions {
-  /** How far above the noise floor the level must rise to count as speech. */
+  /** Decibels above the noise floor at which a level counts as speech. */
   openMargin: number;
-  /** How far above the floor it must fall back below to count as quiet. */
+  /** Decibels above the floor it must fall below again to count as quiet. */
   closeMargin: number;
   /** Speech shorter than this is a cough, a knock or a chair — not a move. */
   minSpeechMs: number;
@@ -46,18 +52,25 @@ export interface VadOptions {
   /** How fast it falls towards a quieter one. Higher: we trust quiet sooner. */
   floorFall: number;
   /**
-   * How fast the floor may still creep upwards *during* speech.
+   * Decibels of variation below which a long burst is judged to be the room
+   * rather than a person.
    *
-   * Slow, because raising the floor while someone is talking is how you stop
-   * hearing them — but not negligible: a genuinely loud room would otherwise
-   * latch the gate open at the first sample and hold it until the ceiling,
-   * every time, forever. At this rate a steady roar is reclassified as the
-   * floor in a couple of seconds, while a real sentence (which clears the gate
-   * by far more than `openMargin`) is untouched even at the ceiling.
+   * This replaced a scheme that let the noise floor creep upward during speech
+   * to escape a roaring room. On a decibel scale that escalates — each rise
+   * lifts the target, which lifts the floor — and it would cut a long sentence
+   * off partway through. Dynamic range is the honest discriminator instead:
+   * speech is never steady, because it has plosives, vowels and gaps between
+   * words, while a fan or a road holds the same level indefinitely.
    */
-  floorCreep: number;
+  minDynamicRangeDb: number;
   /**
-   * Ceiling on the floor's opening estimate.
+   * How long a burst must run before its dynamic range is worth judging.
+   *
+   * A short burst can legitimately be flat — one held vowel, a single knock.
+   */
+  dynamicRangeAfterMs: number;
+  /**
+   * Ceiling (in dBFS) on the floor's opening estimate.
    *
    * The first sample of a session is usually silence, because the microphone
    * only opens once the app has stopped talking. Usually — someone who starts
@@ -67,19 +80,32 @@ export interface VadOptions {
    * that really is this loud.
    */
   maxInitialFloor: number;
+  /**
+   * Floor (in dBFS) below which the estimate will not be dragged.
+   *
+   * A muted or disconnected microphone reports digital silence forever. Without
+   * a lower bound the noise floor would chase it to -160, and then the faintest
+   * electrical noise would clear `openMargin` and read as speech.
+   */
+  minFloor: number;
 }
 
 export const DEFAULT_VAD_OPTIONS: VadOptions = {
-  openMargin: 0.1,
-  closeMargin: 0.05,
+  // Speech typically sits 15–25 dB over a domestic room. Opening at 9 dB
+  // catches a quiet speaker without opening on a fridge.
+  openMargin: 9,
+  closeMargin: 5,
   minSpeechMs: 300,
-  hangoverMs: 900,
+  hangoverMs: 800,
   maxUtteranceMs: 12_000,
-  idleTimeoutMs: 30_000,
+  idleTimeoutMs: 45_000,
   floorRise: 0.05,
   floorFall: 0.3,
-  floorCreep: 0.05,
-  maxInitialFloor: 0.35,
+  minDynamicRangeDb: 6,
+  dynamicRangeAfterMs: 1_500,
+  // -35 dBFS is already a loud room; above that we stop believing it is noise.
+  maxInitialFloor: -35,
+  minFloor: -75,
 };
 
 export interface VadState {
@@ -92,14 +118,10 @@ export interface VadState {
   lastLoudAt: number | null;
   /** Start of the current stretch of nothing-said, for the idle clock. */
   quietSince: number | null;
-  /**
-   * The floor when the current burst began.
-   *
-   * Compared against the floor at the end, this is what separates a person who
-   * stopped talking from a room that turned out to be loud: only the latter
-   * drags the floor up behind it. See `discard`.
-   */
-  floorAtSpeechStart: number | null;
+  /** Quietest level seen during the current burst, for the range test. */
+  burstMin: number | null;
+  /** Loudest level seen during the current burst. */
+  burstMax: number | null;
 }
 
 export type VadEvent =
@@ -124,7 +146,7 @@ export type VadEvent =
   | { kind: 'idle' };
 
 export interface VadSample {
-  /** Input level, 0–1. */
+  /** Input level in dBFS (≤ 0), as `rmsDbfs` reports it. */
   level: number;
   /** Timestamp in milliseconds. */
   at: number;
@@ -137,7 +159,8 @@ export function initialVadState(): VadState {
     speechStartedAt: null,
     lastLoudAt: null,
     quietSince: null,
-    floorAtSpeechStart: null,
+    burstMin: null,
+    burstMax: null,
   };
 }
 
@@ -159,14 +182,16 @@ export function advanceVad(
     return {
       state: {
         ...initialVadState(),
-        floor: Math.min(clamp01(level), options.maxInitialFloor),
+        floor: clampFloor(Math.min(level, options.maxInitialFloor), options),
         quietSince: at,
       },
       event: { kind: 'quiet' },
     };
   }
 
-  const floor = adaptFloor(state.floor, level, state.speaking, options);
+  // The floor is learnt only while nobody is talking. Adapting it during
+  // speech is how a detector stops hearing the person it is listening to.
+  const floor = state.speaking ? state.floor : adaptFloor(state.floor, level, options);
   // Hysteresis: a higher bar to start talking than to keep talking.
   const threshold = floor + (state.speaking ? options.closeMargin : options.openMargin);
   const loud = level > threshold;
@@ -180,7 +205,8 @@ export function advanceVad(
           speaking: true,
           speechStartedAt: at,
           lastLoudAt: at,
-          floorAtSpeechStart: floor,
+          burstMin: level,
+          burstMax: level,
         },
         event: { kind: 'speech-start' },
       };
@@ -195,43 +221,51 @@ export function advanceVad(
   const startedAt = state.speechStartedAt ?? at;
   const lastLoudAt = loud ? at : (state.lastLoudAt ?? startedAt);
   const speechMs = lastLoudAt - startedAt;
+  const burstMin = Math.min(state.burstMin ?? level, level);
+  const burstMax = Math.max(state.burstMax ?? level, level);
+
+  /**
+   * Flat for long enough to be machinery rather than a voice. The floor is
+   * lifted to what we actually heard, so the same noise does not reopen the
+   * gate a tenth of a second later.
+   */
+  const isBackground =
+    at - startedAt >= options.dynamicRangeAfterMs &&
+    burstMax - burstMin < options.minDynamicRangeDb;
+  const settled = (): VadState => closed(isBackground ? Math.max(floor, burstMin) : floor, at, options);
+
+  // A burst that is still going but has already shown itself to be machinery
+  // is closed immediately — there is no reason to hold the gate open for it.
+  if (isBackground) {
+    return { state: settled(), event: { kind: 'discard', reason: 'background', speechMs } };
+  }
 
   if (at - startedAt >= options.maxUtteranceMs) {
-    // Not checked for background noise: a roaring room is closed out by the
-    // creeping floor within a second or two, long before the ceiling, so
-    // anything that lasts this long is somebody talking.
-    return { state: closed(floor, at), event: { kind: 'utterance', reason: 'max-duration', speechMs } };
+    return { state: settled(), event: { kind: 'utterance', reason: 'max-duration', speechMs } };
   }
 
   if (!loud && at - lastLoudAt >= options.hangoverMs) {
-    // "Quiet" here means below the *current* threshold, and the threshold has
-    // been creeping up. If the level would still have opened the gate at the
-    // threshold this burst started with, then nothing actually went quiet —
-    // the floor simply caught up with the room. There is no speech in the clip.
-    const background = level > (state.floorAtSpeechStart ?? floor) + options.openMargin;
-    if (background) {
-      return { state: closed(floor, at), event: { kind: 'discard', reason: 'background', speechMs } };
-    }
     return speechMs < options.minSpeechMs
-      ? { state: closed(floor, at), event: { kind: 'discard', reason: 'too-short', speechMs } }
-      : { state: closed(floor, at), event: { kind: 'utterance', reason: 'silence', speechMs } };
+      ? { state: settled(), event: { kind: 'discard', reason: 'too-short', speechMs } }
+      : { state: settled(), event: { kind: 'utterance', reason: 'silence', speechMs } };
   }
 
-  return { state: { ...state, floor, lastLoudAt }, event: { kind: 'speech' } };
+  return { state: { ...state, floor, lastLoudAt, burstMin, burstMax }, event: { kind: 'speech' } };
 }
 
 /**
  * Back to waiting, with the idle clock restarted. The floor is carried over:
  * the room has not changed just because the sentence ended.
  */
-function closed(floor: number, at: number): VadState {
+function closed(floor: number, at: number, options: VadOptions): VadState {
   return {
-    floor,
+    floor: clampFloor(floor, options),
     speaking: false,
     speechStartedAt: null,
     lastLoudAt: null,
     quietSince: at,
-    floorAtSpeechStart: null,
+    burstMin: null,
+    burstMax: null,
   };
 }
 
@@ -240,20 +274,18 @@ function closed(floor: number, at: number): VadState {
  * room makes the detector responsive after a noisy moment passes; rising slowly
  * keeps a drawn-out word from being absorbed into the floor and going unheard.
  */
-function adaptFloor(floor: number, level: number, speaking: boolean, options: VadOptions): number {
+function adaptFloor(floor: number, level: number, options: VadOptions): number {
   // A loud sample is probably speech, and speech must never raise the floor far
   // enough to hide itself.
   const target = Math.min(level, floor + options.openMargin);
-  // Mid-sentence the floor may only creep, and only upwards: a pause inside a
-  // sentence is not evidence that the room got quieter.
-  if (speaking) return target > floor ? clamp01(floor + (target - floor) * options.floorCreep) : floor;
   const rate = target < floor ? options.floorFall : options.floorRise;
-  return clamp01(floor + (target - floor) * rate);
+  return clampFloor(floor + (target - floor) * rate, options);
 }
 
-function clamp01(value: number): number {
-  if (Number.isNaN(value)) return 0;
-  return Math.max(0, Math.min(1, value));
+/** Keeps the floor inside the range where a margin above it still means something. */
+function clampFloor(value: number, options: VadOptions): number {
+  if (Number.isNaN(value)) return options.minFloor;
+  return Math.max(options.minFloor, Math.min(0, value));
 }
 
 /**
@@ -266,6 +298,7 @@ export function createVad(overrides: Partial<VadOptions> = {}) {
 
   return {
     options,
+    /** @param level dBFS, from `rmsDbfs`. */
     push(level: number, at: number = Date.now()): VadEvent {
       const next = advanceVad(state, { level, at }, options);
       state = next.state;
