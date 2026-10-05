@@ -1,0 +1,27 @@
+{
+  "name": "@sms/mobile",
+  "version": "0.1.0",
+  "private": true,
+  "main": "index.ts",
+  "scripts": {
+    "start": "expo start --dev-client",
+    "android": "expo run:android",
+    "prebuild": "expo prebuild --platform android",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@sms/shared": "*",
+    "@supabase/supabase-js": "^2.117.2",
+    "expo": "~57.0.26",
+    "expo-dev-client": "~57.0.19",
+    "expo-status-bar": "~57.0.1",
+    "react": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-url-polyfill": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.2",
+    "typescript": "~6.0.3"
+  }
+}
