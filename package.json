@@ -1,21 +1,11 @@
 {
-  "name": "todo-app",
+  "name": "sms-gateway",
   "private": true,
-  "type": "module",
+  "workspaces": ["apps/*", "packages/*"],
   "scripts": {
-    "build": "nuxt build",
-    "dev": "nuxt dev",
-    "generate": "nuxt generate",
-    "preview": "nuxt preview",
-    "postinstall": "nuxt prepare"
-  },
-  "dependencies": {
-    "nuxt": "^3.14.0",
-    "vue": "^3.5.0",
-    "vue-router": "^4.4.0"
-  },
-  "devDependencies": {
-    "@nuxt/devtools": "^1.6.0",
-    "typescript": "^5.6.0"
+    "web": "npm run dev -w apps/web",
+    "mobile": "npm run start -w apps/mobile",
+    "typecheck": "npm run typecheck -w apps/web && npm run typecheck -w apps/mobile",
+    "test": "npm run test -w packages/shared"
   }
 }

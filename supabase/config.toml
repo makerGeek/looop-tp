@@ -1,0 +1,16 @@
+project_id = "sms-gateway"
+
+[api]
+port = 54321
+schemas = ["public"]
+
+[db]
+port = 54322
+major_version = 15
+
+[auth]
+site_url = "http://localhost:5173"
+enable_signup = true
+
+[auth.email]
+enable_confirmations = false

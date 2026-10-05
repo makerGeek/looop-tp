@@ -1,24 +1,12 @@
-# Nuxt dev/build outputs
-.output
-.data
-.nuxt
-.nitro
-.cache
-dist
-
-# Node dependencies
 node_modules
-
-# Logs
-logs
-*.log
-
-# Misc
-.DS_Store
-.fleet
-.idea
-
-# Local env files
+dist
+.expo
 .env
 .env.*
 !.env.example
+apps/mobile/android
+apps/mobile/ios
+*.log
+.DS_Store
+supabase/.branches
+supabase/.temp

@@ -1,3 +1,0 @@
-# Project
-
-Initialized by Looop.
