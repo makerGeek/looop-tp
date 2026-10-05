@@ -36,7 +36,9 @@ Needs a real build (Expo Go cannot send SMS).
 cp apps/mobile/.env.example apps/mobile/.env   # EXPO_PUBLIC_* values
 cd apps/mobile
 npx eas build -p android --profile preview      # installable APK
-# or locally, with Android SDK: npx expo run:android
+# or locally with the Android SDK + JDK 17+:
+npx expo prebuild --platform android && cd android && ./gradlew assembleRelease
+# APK: android/app/build/outputs/apk/release/app-release.apk
 ```
 Open the app, sign in, grant SMS permissions, and disable battery optimization when prompted. A persistent notification shows the gateway is running.
 
@@ -45,4 +47,5 @@ Open the app, sign in, grant SMS permissions, and disable battery optimization w
 - Some OEMs (Xiaomi, Huawei, Samsung…) kill background apps aggressively; also lock the app in recents and allow auto-start.
 - Carriers rate-limit; the app spaces sends ~1.5s apart. Long texts are sent as multipart.
 - Scheduling/automation is intentionally not in v1 (the queue model makes it a small addition: a cron job inserting `queued` rows).
-- The Kotlin module was not compiled or run in the authoring environment (no Android SDK/device); expect to test on a phone.
+- The release APK builds cleanly (`expo prebuild` + `./gradlew assembleRelease`, Android SDK 36), but has not yet been run on a physical device.
+- `EXPO_PUBLIC_*` values are baked into the JS bundle at build time, so set `apps/mobile/.env` **before** building.

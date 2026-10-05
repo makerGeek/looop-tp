@@ -1,0 +1,108 @@
+-- Merging decision tree log ---
+manifest
+ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:1:1-45:12
+INJECTED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:1:1-45:12
+	package
+		INJECTED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml
+	xmlns:android
+		ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:1:11-69
+uses-feature#android.hardware.telephony
+ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:2:3-86
+	android:required
+		ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:2:59-83
+	android:name
+		ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:2:17-58
+uses-permission#android.permission.SEND_SMS
+ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:4:3-65
+	android:name
+		ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:4:20-62
+uses-permission#android.permission.RECEIVE_SMS
+ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:5:3-68
+	android:name
+		ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:5:20-65
+uses-permission#android.permission.POST_NOTIFICATIONS
+ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:6:3-75
+	android:name
+		ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:6:20-72
+uses-permission#android.permission.FOREGROUND_SERVICE
+ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:7:3-75
+	android:name
+		ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:7:20-72
+uses-permission#android.permission.FOREGROUND_SERVICE_SPECIAL_USE
+ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:8:3-87
+	android:name
+		ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:8:20-84
+uses-permission#android.permission.RECEIVE_BOOT_COMPLETED
+ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:9:3-79
+	android:name
+		ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:9:20-76
+uses-permission#android.permission.WAKE_LOCK
+ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:10:3-66
+	android:name
+		ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:10:20-63
+uses-permission#android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
+ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:11:3-93
+	android:name
+		ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:11:20-90
+application
+ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:13:3-44:17
+service#expo.modules.smsbridge.GatewayService
+ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:15:5-22:15
+	android:exported
+		ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:17:7-31
+	android:foregroundServiceType
+		ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:18:7-49
+	android:name
+		ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:16:7-59
+property#android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE
+ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:19:7-21:101
+	android:value
+		ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:21:9-98
+	android:name
+		ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:20:9-68
+receiver#expo.modules.smsbridge.SmsReceiver
+ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:25:5-32:16
+	android:exported
+		ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:27:7-30
+	android:permission
+		ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:28:7-60
+	android:name
+		ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:26:7-56
+intent-filter#action:name:android.provider.Telephony.SMS_RECEIVED
+ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:29:7-31:23
+	android:priority
+		ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:29:22-44
+action#android.provider.Telephony.SMS_RECEIVED
+ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:30:9-74
+	android:name
+		ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:30:17-71
+receiver#expo.modules.smsbridge.SmsStatusReceiver
+ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:35:5-98
+	android:exported
+		ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:35:71-95
+	android:name
+		ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:35:15-70
+receiver#expo.modules.smsbridge.BootReceiver
+ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:38:5-43:16
+	android:exported
+		ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:38:66-89
+	android:name
+		ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:38:15-65
+intent-filter#action:name:android.intent.action.BOOT_COMPLETED+action:name:android.intent.action.MY_PACKAGE_REPLACED
+ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:39:7-42:23
+action#android.intent.action.BOOT_COMPLETED
+ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:40:9-71
+	android:name
+		ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:40:17-68
+action#android.intent.action.MY_PACKAGE_REPLACED
+ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:41:9-76
+	android:name
+		ADDED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml:41:17-73
+uses-sdk
+INJECTED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml reason: use-sdk injection requested
+INJECTED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml
+INJECTED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml
+	android:targetSdkVersion
+		INJECTED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml
+	android:minSdkVersion
+		INJECTED from /home/user/looop-tp/apps/mobile/modules/sms-bridge/android/src/main/AndroidManifest.xml

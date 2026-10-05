@@ -1,0 +1,6 @@
+[
+    {
+        "merged": "expo.modules.smsbridge.sms-bridge-release-3:/drawable-watch-v20/abc_dialog_material_background.xml",
+        "source": "expo.modules.smsbridge.sms-bridge-appcompat-1.7.0-7:/drawable-watch-v20/abc_dialog_material_background.xml"
+    }
+]
