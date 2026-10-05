@@ -10,3 +10,5 @@ apps/mobile/ios
 .DS_Store
 supabase/.branches
 supabase/.temp
+build/
+.gradle/
