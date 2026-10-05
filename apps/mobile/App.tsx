@@ -6,7 +6,7 @@ import {
 import type { Session } from '@supabase/supabase-js';
 import SmsBridge from './modules/sms-bridge';
 import { engine } from './src/engine';
-import { configured, supabase } from './src/supabase';
+import { getConfig, loadConfig, saveConfig, supabase } from './src/supabase';
 
 async function requestPermissions(): Promise<boolean> {
   const wanted = [
@@ -20,27 +20,57 @@ async function requestPermissions(): Promise<boolean> {
 }
 
 export default function App() {
+  const [ready, setReady] = useState<boolean | undefined>(undefined);
+  const [editingServer, setEditingServer] = useState(false);
   const [session, setSession] = useState<Session | null | undefined>(undefined);
 
+  useEffect(() => { loadConfig().then(setReady); }, []);
+
   useEffect(() => {
+    if (!ready) return;
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
     const { data } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
     return () => data.subscription.unsubscribe();
-  }, []);
+  }, [ready]);
 
-  if (!configured) {
-    return (
-      <SafeAreaView style={styles.center}>
-        <Text style={styles.h1}>Setup required</Text>
-        <Text>Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY (see .env.example) and rebuild.</Text>
-      </SafeAreaView>
-    );
+  if (ready === undefined) return <SafeAreaView style={styles.center}><ActivityIndicator /></SafeAreaView>;
+  if (!ready || editingServer) {
+    return <ServerConfig onDone={() => { setReady(true); setEditingServer(false); }} canCancel={ready && editingServer}
+      onCancel={() => setEditingServer(false)} />;
   }
   if (session === undefined) return <SafeAreaView style={styles.center}><ActivityIndicator /></SafeAreaView>;
-  return session ? <Home session={session} /> : <Login />;
+  return session ? <Home session={session} /> : <Login onEditServer={() => setEditingServer(true)} />;
 }
 
-function Login() {
+function ServerConfig({ onDone, onCancel, canCancel }: { onDone: () => void; onCancel: () => void; canCancel: boolean }) {
+  const [url, setUrl] = useState('');
+  const [key, setKey] = useState('');
+
+  useEffect(() => { getConfig().then((c) => { if (c) { setUrl(c.url); setKey(c.key); } }); }, []);
+
+  async function save() {
+    if (!/^https?:\/\//.test(url.trim()) || !key.trim()) {
+      return Alert.alert('Invalid', 'Enter the Supabase project URL (https://xxxx.supabase.co) and the anon key.');
+    }
+    await saveConfig(url, key);
+    onDone();
+  }
+
+  return (
+    <SafeAreaView style={styles.center}>
+      <Text style={styles.h1}>Server</Text>
+      <Text style={{ marginBottom: 12 }}>Your Supabase project URL and anon (public) key — same ones as the web app.</Text>
+      <TextInput style={styles.input} placeholder="https://xxxx.supabase.co" autoCapitalize="none" autoCorrect={false}
+        keyboardType="url" value={url} onChangeText={setUrl} />
+      <TextInput style={styles.input} placeholder="Anon key" autoCapitalize="none" autoCorrect={false}
+        value={key} onChangeText={setKey} />
+      <Button title="Save" onPress={save} />
+      {canCancel && <View style={{ marginTop: 8 }}><Button title="Cancel" color="#666" onPress={onCancel} /></View>}
+    </SafeAreaView>
+  );
+}
+
+function Login({ onEditServer }: { onEditServer: () => void }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
@@ -60,6 +90,7 @@ function Login() {
         value={email} onChangeText={setEmail} />
       <TextInput style={styles.input} placeholder="Password" secureTextEntry value={password} onChangeText={setPassword} />
       <Button title={busy ? 'Signing in…' : 'Sign in'} onPress={signIn} disabled={busy} />
+      <View style={{ marginTop: 16 }}><Button title="Server settings" color="#666" onPress={onEditServer} /></View>
     </SafeAreaView>
   );
 }

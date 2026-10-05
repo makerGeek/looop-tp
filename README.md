@@ -33,7 +33,8 @@ npm run web
 ### 3. Android app
 Needs a real build (Expo Go cannot send SMS).
 ```
-cp apps/mobile/.env.example apps/mobile/.env   # EXPO_PUBLIC_* values
+# Optional: cp apps/mobile/.env.example apps/mobile/.env (build-time defaults).
+# Otherwise the app asks for the Supabase URL + anon key on first launch.
 cd apps/mobile
 npx eas build -p android --profile preview      # installable APK
 # or locally with the Android SDK + JDK 17+:
@@ -48,4 +49,4 @@ Open the app, sign in, grant SMS permissions, and disable battery optimization w
 - Carriers rate-limit; the app spaces sends ~1.5s apart. Long texts are sent as multipart.
 - Scheduling/automation is intentionally not in v1 (the queue model makes it a small addition: a cron job inserting `queued` rows).
 - The release APK builds cleanly (`expo prebuild` + `./gradlew assembleRelease`, Android SDK 36), but has not yet been run on a physical device.
-- `EXPO_PUBLIC_*` values are baked into the JS bundle at build time, so set `apps/mobile/.env` **before** building.
+- The Supabase URL/anon key are entered in the app on first launch (stored on the device); `EXPO_PUBLIC_*` build-time values are only a fallback.
