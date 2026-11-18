@@ -1,33 +1,34 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
 import type { Session } from '@supabase/supabase-js';
-import { configured, supabase } from './lib/supabase';
+import { isConfigured, supabase } from './lib/supabase';
+import ServerConfig from './pages/ServerConfig';
 import Login from './pages/Login';
 import Inbox from './pages/Inbox';
 import Contacts from './pages/Contacts';
 import Devices from './pages/Devices';
 
 export default function App() {
+  const [ready, setReady] = useState(isConfigured());
+  const [editingServer, setEditingServer] = useState(false);
   const [session, setSession] = useState<Session | null | undefined>(undefined);
 
   useEffect(() => {
+    if (!ready) return;
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
     const { data } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
     return () => data.subscription.unsubscribe();
-  }, []);
+  }, [ready]);
 
-  if (!configured)
+  if (!ready || editingServer)
     return (
-      <div className="mx-auto max-w-md p-8">
-        <h1 className="text-xl font-semibold">Setup required</h1>
-        <p className="mt-2 text-slate-600">
-          Set <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code> in{' '}
-          <code>apps/web/.env</code> (see <code>.env.example</code>).
-        </p>
-      </div>
+      <ServerConfig
+        onDone={() => { setReady(true); setEditingServer(false); setSession(undefined); }}
+        onCancel={ready ? () => setEditingServer(false) : undefined}
+      />
     );
   if (session === undefined) return null;
-  if (!session) return <Login />;
+  if (!session) return <Login onEditServer={() => setEditingServer(true)} />;
 
   const link = ({ isActive }: { isActive: boolean }) =>
     `rounded px-3 py-1.5 text-sm ${isActive ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-200'}`;

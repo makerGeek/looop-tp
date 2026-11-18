@@ -1,7 +1,7 @@
 import { FormEvent, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
-export default function Login() {
+export default function Login({ onEditServer }: { onEditServer: () => void }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [mode, setMode] = useState<'in' | 'up'>('in');
@@ -40,6 +40,9 @@ export default function Login() {
         <button type="button" className="w-full text-sm text-slate-600 underline"
           onClick={() => setMode(mode === 'in' ? 'up' : 'in')}>
           {mode === 'in' ? 'No account? Sign up' : 'Have an account? Sign in'}
+        </button>
+        <button type="button" className="w-full text-xs text-slate-400 underline" onClick={onEditServer}>
+          Server settings
         </button>
       </form>
     </div>

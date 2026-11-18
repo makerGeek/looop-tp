@@ -25,10 +25,15 @@ Create a project (or `supabase start` locally) and apply `supabase/migrations/*.
 
 ### 2. Web
 ```
-cp apps/web/.env.example apps/web/.env   # fill in URL + anon key
+# Optional: cp apps/web/.env.example apps/web/.env (build-time defaults).
+# Otherwise the page asks for the Supabase URL + anon key on first load.
 npm install
 npm run web
 ```
+
+### Hosting the web client
+`.github/workflows/deploy-web.yml` deploys `apps/web` to GitHub Pages on pushes to `main`
+(Settings → Pages → Source: GitHub Actions). The app uses hash routing and a relative base, so it also works on any static host.
 
 ### 3. Android app
 Needs a real build (Expo Go cannot send SMS).
