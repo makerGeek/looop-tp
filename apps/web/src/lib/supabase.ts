@@ -15,10 +15,14 @@ function make(url: string, key: string): SupabaseClient {
   return createClient(url, key);
 }
 
-// Server config entered in the UI wins; build-time VITE_* values are the fallback.
+// Built-in server (publishable key is public by design; access is enforced by RLS).
+const DEFAULT_URL = 'https://xwhaqkzmkficvjmsbnbn.supabase.co';
+const DEFAULT_KEY = 'sb_publishable_k9gZItk7HY9JBjvSc8Az-g_-5XbQxPz';
+
+// Server config entered in the UI wins, then build-time VITE_* values, then the built-in defaults.
 const initial = readStored() ?? {
-  url: (import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? '',
-  key: (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) ?? '',
+  url: (import.meta.env.VITE_SUPABASE_URL as string | undefined) || DEFAULT_URL,
+  key: (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) || DEFAULT_KEY,
 };
 
 let client: SupabaseClient | null = initial.url && initial.key ? make(initial.url, initial.key) : null;

@@ -4,6 +4,11 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 const CONFIG_KEY = 'server_config';
 
+// Built-in server. The publishable key is public by design (access is enforced by RLS), so it is
+// safe to ship. "Server settings" on the login screen can still override these.
+const DEFAULT_URL = 'https://xwhaqkzmkficvjmsbnbn.supabase.co';
+const DEFAULT_KEY = 'sb_publishable_k9gZItk7HY9JBjvSc8Az-g_-5XbQxPz';
+
 let client: SupabaseClient | null = null;
 
 function make(url: string, key: string) {
@@ -18,13 +23,13 @@ function make(url: string, key: string) {
 }
 
 /**
- * Loads the server config: values entered in the app win, build-time EXPO_PUBLIC_* are the
- * fallback. Must resolve before anything touches `supabase` (UI and headless task both await it).
+ * Loads the server config: values entered in the app win, then build-time EXPO_PUBLIC_*, then the
+ * built-in defaults above. Must resolve before anything touches `supabase` (UI and headless task both await it).
  */
 export async function loadConfig(): Promise<boolean> {
   if (client) return true;
-  let url = process.env.EXPO_PUBLIC_SUPABASE_URL;
-  let key = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+  let url = process.env.EXPO_PUBLIC_SUPABASE_URL || DEFAULT_URL;
+  let key = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || DEFAULT_KEY;
   try {
     const raw = await AsyncStorage.getItem(CONFIG_KEY);
     if (raw) ({ url, key } = JSON.parse(raw));
